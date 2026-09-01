@@ -1,0 +1,162 @@
+// Pensum app data model — see /home/felipe/.claude/plans/since-we-can-indeed-structured-gadget.md §B
+// SQLite for the single-container deploy; swap `provider` to "postgresql" later.
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+/// A recommended-pensum variant (one Excel sheet). Students pick one of these.
+model Catalog {
+  id             Int      @id @default(autoincrement())
+  slug           String   @unique // iele-cbu3 | iele-cbu3-pc | ielc-cbu3 | ielc-cbu3-pc | doble-cbu3
+  programCode    String // IELE | IELC | DOBLE
+  programName    String // "Ingeniería Eléctrica"
+  variantLabel   String // "" | "con Precálculo" | "Electrónica" | "Doble programa"
+  status         String   @default("draft") // draft | published | archived
+  term           String // term offerings were synced against, e.g. "202620"
+  sourceFilename String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  courses    CatalogCourse[]
+  snapshots  CatalogSnapshot[]
+  importJobs ImportJob[]
+
+  @@index([status])
+}
+
+/// Global course registry — MATE1105 is the same course across programs.
+model Course {
+  id             Int      @id @default(autoincrement())
+  normalizedCode String   @unique // "IELE2100"
+  nameEs         String
+  nameEn         String?
+  defaultCredits Float?
+  createdAt      DateTime @default(now())
+
+  catalogCourses CatalogCourse[]
+  offerings      CourseOffering[]
+}
+
+/// A course's (or placeholder slot's) role inside one catalog.
+model CatalogCourse {
+  id                Int     @id @default(autoincrement())
+  catalogId         Int
+  courseId          Int? // null for an unbound placeholder
+  displayCode       String // raw Excel col1: "IELE 2100" | "CBU" | "ELECTIVA IELE" | "IELE 301X"
+  name              String
+  credits           Float
+  suggestedSemester Int
+  courseType        String // nucleo|electiva|cbu|complementaria|proyecto
+  isPlaceholder     Boolean @default(false)
+  placeholderKind   String? // CBU|ELECTIVA|EFI|CLE|DEPT|CODEX|CI
+  placeholderLabel  String?
+  sortIndex         Int // sheet row order within catalog (stable slot key)
+  prereqText        String?
+  coreqText         String?
+  prereqTree        Json? // ReqNode | null — consumed as-is by lib/availability.ts
+  coreqTree         Json?
+  pairingStatus     String  @default("needs_manual")
+  // auto_paired | not_offered | needs_manual | manual_resolved | placeholder_pool | sync_failed
+
+  catalog       Catalog        @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  course        Course?        @relation(fields: [courseId], references: [id])
+  manualPairing ManualPairing?
+
+  @@unique([catalogId, sortIndex])
+  @@index([catalogId])
+  @@index([pairingStatus])
+}
+
+/// Live offering data from ofertadecursos.uniandes.edu.co, per (course, term).
+/// One fetch serves every catalog that contains the course.
+model CourseOffering {
+  id                Int      @id @default(autoincrement())
+  courseId          Int
+  term              String
+  offered           Boolean
+  canonicalTitle    String?
+  canonicalCredits  Float?
+  sectionCount      Int      @default(0)
+  seatsAvailableMin Int?
+  seatsAvailableMax Int?
+  attrs             Json? // string[] e.g. ["EPSI","VIRT"]
+  ptrmSet           Json? // string[] e.g. ["8A","16"]
+  lastSyncedAt      DateTime @default(now())
+  syncError         String?
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, term])
+  @@index([term])
+}
+
+/// One row per catalog_course that could not be auto-paired. Prefilled from the Excel.
+model ManualPairing {
+  id                Int       @id @default(autoincrement())
+  catalogCourseId   Int       @unique
+  excelCode         String
+  excelName         String
+  excelCredits      Float?
+  excelSemester     Int?
+  excelPrereqText   String?
+  suggestedCode     String?
+  candidateCodes    Json? // string[] (placeholder pools)
+  resolvedCode      String?
+  resolvedNote      String?
+  keepAsPlaceholder Boolean   @default(false)
+  resolvedBy        String?
+  resolvedAt        DateTime?
+  createdAt         DateTime  @default(now())
+
+  catalogCourse CatalogCourse @relation(fields: [catalogCourseId], references: [id], onDelete: Cascade)
+}
+
+/// An uploaded Excel awaiting review. Nothing is applied until an admin confirms.
+model ImportJob {
+  id             Int       @id @default(autoincrement())
+  filename       String
+  prereqFilename String?
+  uploadedBy     String
+  status         String    @default("parsed") // parsed | failed | applied | discarded
+  scope          String // "all" | a catalog slug
+  diff           Json?
+  errors         Json?
+  warnings       Json?
+  parsedPayload  Json? // ParsedCatalog[] retained until apply/discard
+  uploadedAt     DateTime  @default(now())
+  appliedAt      DateTime?
+  catalogId      Int?
+
+  catalog Catalog? @relation(fields: [catalogId], references: [id])
+}
+
+/// Full denormalized catalog snapshot for rollback (written before every import/restore).
+model CatalogSnapshot {
+  id        Int      @id @default(autoincrement())
+  catalogId Int
+  payload   Json
+  reason    String // pre-import | pre-restore | manual
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  catalog Catalog @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+
+  @@index([catalogId])
+}
+
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  actor      String
+  action     String
+  entityType String
+  entityId   String
+  before     Json?
+  after      Json?
+  createdAt  DateTime @default(now())
+}

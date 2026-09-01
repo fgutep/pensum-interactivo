@@ -1,0 +1,2184 @@
+{
+  "generatedAt": "2026-08-24T20:25:10.950Z",
+  "program": {
+    "code": "IELE",
+    "name": "Ingeniería Eléctrica",
+    "catalogLabel": "CBU3 (documento base)"
+  },
+  "courses": [
+    {
+      "id": "IELE1118",
+      "code": "IELE 1118",
+      "codeNormalized": "IELE1118",
+      "name": "PROYECTO RETOS IELE",
+      "credits": 3,
+      "semester": 1,
+      "type": "proyecto",
+      "isPlaceholder": false,
+      "prereqText": "",
+      "coreqText": "IELE-1118L",
+      "prereqTree": null,
+      "prereqCourseIds": [],
+      "prereqExternal": [],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "MATE1203",
+      "code": "MATE 1203",
+      "codeNormalized": "MATE1203",
+      "name": "CÁLCULO DIFERENCIAL",
+      "credits": 3,
+      "semester": 1,
+      "type": "nucleo",
+      "isPlaceholder": false,
+      "prereqText": "(MATE 1201 O MATE1  O MATS1 ) Y MATE 1203C*",
+      "coreqText": "-",
+      "prereqTree": {
+        "op": "AND",
+        "items": [
+          {
+            "op": "OR",
+            "items": [
+              {
+                "op": "OR",
+                "items": [
+                  {
+                    "op": "COURSE",
+                    "code": "MATE1201",
+                    "soft": false
+                  },
+                  {
+                    "op": "COURSE",
+                    "code": "MATE1",
+                    "soft": false
+                  }
+                ]
+              },
+              {
+                "op": "COURSE",
+                "code": "MATS1",
+                "soft": false
+              }
+            ]
+          },
+          {
+            "op": "COURSE",
+            "code": "MATE1203C",
+            "soft": true
+          }
+        ]
+      },
+      "prereqCourseIds": [],
+      "prereqExternal": [
+        "MATE1201",
+        "MATE1",
+        "MATS1",
+        "MATE1203C"
+      ],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "ISIS1221",
+      "code": "ISIS 1221",
+      "codeNormalized": "ISIS1221",
+      "name": "INTRODUCCIÓN A LA PROGRAMACIÓN",
+      "credits": 3,
+      "semester": 1,
+      "type": "nucleo",
+      "isPlaceholder": false,
+      "prereqText": "",
+      "coreqText": "",
+      "prereqTree": null,
+      "prereqCourseIds": [],
+      "prereqExternal": [],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "ESCR",
+      "code": "ESCR",
+      "codeNormalized": "ESCR",
+      "name": "PENSAR, COMUNICAR Y COLABORAR",
+      "credits": 3,
+      "semester": 1,
+      "type": "nucleo",
+      "isPlaceholder": false,
+      "prereqText": "",
+      "coreqText": "",
+      "prereqTree": null,
+      "prereqCourseIds": [],
+      "prereqExternal": [],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "CBU-S1-1",
+      "code": "CBU",
+      "codeNormalized": "CBU",
+      "name": "CICLO BÁSICO UNIANDINO",
+      "credits": 3,
+      "semester": 1,
+      "type": "cbu",
+      "isPlaceholder": true,
+      "prereqText": "",
+      "coreqText": "",
+      "prereqTree": null,
+      "prereqCourseIds": [],
+      "prereqExternal": [],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "IELE1081",
+      "code": "IELE 1081",
+      "codeNormalized": "IELE1081",
+      "name": "TALLER IEE 1",
+      "credits": 1,
+      "semester": 2,
+      "type": "nucleo",
+      "isPlaceholder": false,
+      "prereqText": "",
+      "coreqText": "",
+      "prereqTree": null,
+      "prereqCourseIds": [],
+      "prereqExternal": [],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "IELE1002",
+      "code": "IELE 1002",
+      "codeNormalized": "IELE1002",
+      "name": "FUNDAMENTOS DE CIRCUITOS",
+      "credits": 3,
+      "semester": 2,
+      "type": "nucleo",
+      "isPlaceholder": false,
+      "prereqText": "MATE 1203 O MATE 1204",
+      "coreqText": "IELE-1002L",
+      "prereqTree": {
+        "op": "OR",
+        "items": [
+          {
+            "op": "COURSE",
+            "code": "MATE1203",
+            "soft": false
+          },
+          {
+            "op": "COURSE",
+            "code": "MATE1204",
+            "soft": false
+          }
+        ]
+      },
+      "prereqCourseIds": [
+        "MATE1203"
+      ],
+      "prereqExternal": [
+        "MATE1204"
+      ],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "IELE1200",
+      "code": "IELE 1200",
+      "codeNormalized": "IELE1200",
+      "name": "FUNDAMENTOS SISTEMAS DIGITALES",
+      "credits": 2,
+      "semester": 2,
+      "type": "nucleo",
+      "isPlaceholder": false,
+      "prereqText": "",
+      "coreqText": "IELE-1200L",
+      "prereqTree": null,
+      "prereqCourseIds": [],
+      "prereqExternal": [],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "MATE1214",
+      "code": "MATE 1214",
+      "codeNormalized": "MATE1214",
+      "name": "CÁLCULO INTEGRAL CON EC. DIF.",
+      "credits": 3,
+      "semester": 2,
+      "type": "nucleo",
+      "isPlaceholder": false,
+      "prereqText": "(MATE 1203 O MATE 1204 O MATE 1212) Y MATE 1214C*",
+      "coreqText": "-",
+      "prereqTree": {
+        "op": "AND",
+        "items": [
+          {
+            "op": "OR",
+            "items": [
+              {
+                "op": "OR",
+                "items": [
+                  {
+                    "op": "COURSE",
+                    "code": "MATE1203",
+                    "soft": false
+                  },
+                  {
+                    "op": "COURSE",
+                    "code": "MATE1204",
+                    "soft": false
+                  }
+                ]
+              },
+              {
+                "op": "COURSE",
+                "code": "MATE1212",
+                "soft": false
+              }
+            ]
+          },
+          {
+            "op": "COURSE",
+            "code": "MATE1214C",
+            "soft": true
+          }
+        ]
+      },
+      "prereqCourseIds": [
+        "MATE1203"
+      ],
+      "prereqExternal": [
+        "MATE1204",
+        "MATE1212",
+        "MATE1214C"
+      ],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "MATE1105",
+      "code": "MATE 1105",
+      "codeNormalized": "MATE1105",
+      "name": "ALGEBRA LINEAL",
+      "credits": 3,
+      "semester": 2,
+      "type": "nucleo",
+      "isPlaceholder": false,
+      "prereqText": "(MATE 1203 O MATE 1204 O MATE 1212) Y MATE 1105C*",
+      "coreqText": "-",
+      "prereqTree": {
+        "op": "AND",
+        "items": [
+          {
+            "op": "OR",
+            "items": [
+              {
+                "op": "OR",
+                "items": [
+                  {
+                    "op": "COURSE",
+                    "code": "MATE1203",
+                    "soft": false
+                  },
+                  {
+                    "op": "COURSE",
+                    "code": "MATE1204",
+                    "soft": false
+                  }
+                ]
+              },
+              {
+                "op": "COURSE",
+                "code": "MATE1212",
+                "soft": false
+              }
+            ]
+          },
+          {
+            "op": "COURSE",
+            "code": "MATE1105C",
+            "soft": true
+          }
+        ]
+      },
+      "prereqCourseIds": [
+        "MATE1203"
+      ],
+      "prereqExternal": [
+        "MATE1204",
+        "MATE1212",
+        "MATE1105C"
+      ],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "FISI1518",
+      "code": "FISI 1518",
+      "codeNormalized": "FISI1518",
+      "name": "FISICA I (REFORMA 202020)",
+      "credits": 3,
+      "semester": 2,
+      "type": "nucleo",
+      "isPlaceholder": false,
+      "prereqText": "(FISI 1100 Y (MATE 1203* O MATE 1204*)   ) O (FISI 1502* Y (MATE 1203* O MATE 1204*)   ) O MATE 1203 O MATE 1204",
+      "coreqText": "FISI-1518P",
+      "prereqTree": {
+        "op": "OR",
+        "items": [
+          {
+            "op": "OR",
+            "items": [
+              {
+                "op": "OR",
+                "items": [
+                  {
+                    "op": "AND",
+                    "items": [
+                      {
+                        "op": "COURSE",
+                        "code": "FISI1100",
+                        "soft": false
+                      },
+                      {
+                        "op": "OR",
+                        "items": [
+                          {
+                            "op": "COURSE",
+                            "code": "MATE1203",
+                            "soft": true
+                          },
+                          {
+                            "op": "COURSE",
+                            "code": "MATE1204",
+                            "soft": true
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "op": "AND",
+                    "items": [
+                      {
+                        "op": "COURSE",
+                        "code": "FISI1502",
+                        "soft": true
+                      },
+                      {
+                        "op": "OR",
+                        "items": [
+                          {
+                            "op": "COURSE",
+                            "code": "MATE1203",
+                            "soft": true
+                          },
+                          {
+                            "op": "COURSE",
+                            "code": "MATE1204",
+                            "soft": true
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "op": "COURSE",
+                "code": "MATE1203",
+                "soft": false
+              }
+            ]
+          },
+          {
+            "op": "COURSE",
+            "code": "MATE1204",
+            "soft": false
+          }
+        ]
+      },
+      "prereqCourseIds": [
+        "MATE1203"
+      ],
+      "prereqExternal": [
+        "FISI1100",
+        "MATE1204",
+        "FISI1502"
+      ],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "IELE2150",
+      "code": "IELE 2150",
+      "codeNormalized": "IELE2150",
+      "name": "TRANSICIÓN ENERGÉTICA Y ENERG. RENOV.",
+      "credits": 2,
+      "semester": 2,
+      "type": "nucleo",
+      "isPlaceholder": false,
+      "prereqText": "",
+      "coreqText": "",
+      "prereqTree": null,
+      "prereqCourseIds": [],
+      "prereqExternal": [],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "IELE1082",
+      "code": "IELE 1082",
+      "codeNormalized": "IELE1082",
+      "name": "TALLER IEE 2",
+      "credits": 1,
+      "semester": 3,
+      "type": "nucleo",
+      "isPlaceholder": false,
+      "prereqText": "IELE 1081",
+      "coreqText": "",
+      "prereqTree": {
+        "op": "COURSE",
+        "code": "IELE1081",
+        "soft": false
+      },
+      "prereqCourseIds": [
+        "IELE1081"
+      ],
+      "prereqExternal": [],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "IELE2100",
+      "code": "IELE 2100",
+      "codeNormalized": "IELE2100",
+      "name": "ELEMENTOS DE SISTEMAS ELÉCTRICOS",
+      "credits": 3,
+      "semester": 3,
+      "type": "nucleo",
+      "isPlaceholder": false,
+      "prereqText": "(IELE 1002 O IELE 1006 O IELE 1010) Y (MATE 2210* O MATE 2211*) Y (FISI 1028 O FISI 1528*) Y (ESCR 1102 O LENG 1512)",
+      "coreqText": "IELE-2100L",
+      "prereqTree": {
+        "op": "AND",
+        "items": [
+          {
+            "op": "AND",
+            "items": [
+              {
+                "op": "AND",
+                "items": [
+                  {
+                    "op": "OR",
+                    "items": [
+                      {
+                        "op": "OR",
+                        "items": [
+                          {
+                            "op": "COURSE",
+                            "code": "IELE1002",
+                            "soft": false
+                          },
+                          {
+                            "op": "COURSE",
+                            "code": "IELE1006",
+                            "soft": false
+                          }
+                        ]
+                      },
+                      {
+                        "op": "COURSE",
+                        "code": "IELE1010",
+                        "soft": false
+                      }
+                    ]
+                  },
+                  {
+                    "op": "OR",
+                    "items": [
+                      {
+                        "op": "COURSE",
+                        "code": "MATE2210",
+                        "soft": true
+                      },
+                      {
+                        "op": "COURSE",
+                        "code": "MATE2211",
+                        "soft": true
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "op": "OR",
+                "items": [
+                  {
+                    "op": "COURSE",
+                    "code": "FISI1028",
+                    "soft": false
+                  },
+                  {
+                    "op": "COURSE",
+                    "code": "FISI1528",
+                    "soft": true
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "op": "OR",
+            "items": [
+              {
+                "op": "COURSE",
+                "code": "ESCR1102",
+                "soft": false
+              },
+              {
+                "op": "COURSE",
+                "code": "LENG1512",
+                "soft": false
+              }
+            ]
+          }
+        ]
+      },
+      "prereqCourseIds": [
+        "IELE1002",
+        "MATE2210",
+        "FISI1528"
+      ],
+      "prereqExternal": [
+        "IELE1006",
+        "IELE1010",
+        "MATE2211",
+        "FISI1028",
+        "ESCR1102",
+        "LENG1512"
+      ],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "IELE2500",
+      "code": "IELE 2500",
+      "codeNormalized": "IELE2500",
+      "name": "SEÑALES",
+      "credits": 3,
+      "semester": 3,
+      "type": "nucleo",
+      "isPlaceholder": false,
+      "prereqText": "MATE 1207* O MATE 1208* O MATE 1257*",
+      "coreqText": "IELE-2500L",
+      "prereqTree": {
+        "op": "OR",
+        "items": [
+          {
+            "op": "OR",
+            "items": [
+              {
+                "op": "COURSE",
+                "code": "MATE1207",
+                "soft": true
+              },
+              {
+                "op": "COURSE",
+                "code": "MATE1208",
+                "soft": true
+              }
+            ]
+          },
+          {
+            "op": "COURSE",
+            "code": "MATE1257",
+            "soft": true
+          }
+        ]
+      },
+      "prereqCourseIds": [
+        "MATE1207"
+      ],
+      "prereqExternal": [
+        "MATE1208",
+        "MATE1257"
+      ],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "MATE1207",
+      "code": "MATE 1207",
+      "codeNormalized": "MATE1207",
+      "name": "CÁLCULO VECTORIAL",
+      "credits": 3,
+      "semester": 3,
+      "type": "nucleo",
+      "isPlaceholder": false,
+      "prereqText": "(   (   (MATE 1214 O MATE 1215) Y (MATE 1105 O MATE 1106)   ) O (MATE 1253 Y MATE 2711 Y MATE 1252)   ) Y MATE 1207C*",
+      "coreqText": "-",
+      "prereqTree": {
+        "op": "AND",
+        "items": [
+          {
+            "op": "OR",
+            "items": [
+              {
+                "op": "AND",
+                "items": [
+                  {
+                    "op": "OR",
+                    "items": [
+                      {
+                        "op": "COURSE",
+                        "code": "MATE1214",
+                        "soft": false
+                      },
+                      {
+                        "op": "COURSE",
+                        "code": "MATE1215",
+                        "soft": false
+                      }
+                    ]
+                  },
+                  {
+                    "op": "OR",
+                    "items": [
+                      {
+                        "op": "COURSE",
+                        "code": "MATE1105",
+                        "soft": false
+                      },
+                      {
+                        "op": "COURSE",
+                        "code": "MATE1106",
+                        "soft": false
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "op": "AND",
+                "items": [
+                  {
+                    "op": "AND",
+                    "items": [
+                      {
+                        "op": "COURSE",
+                        "code": "MATE1253",
+                        "soft": false
+                      },
+                      {
+                        "op": "COURSE",
+                        "code": "MATE2711",
+                        "soft": false
+                      }
+                    ]
+                  },
+                  {
+                    "op": "COURSE",
+                    "code": "MATE1252",
+                    "soft": false
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "op": "COURSE",
+            "code": "MATE1207C",
+            "soft": true
+          }
+        ]
+      },
+      "prereqCourseIds": [
+        "MATE1214",
+        "MATE1105"
+      ],
+      "prereqExternal": [
+        "MATE1215",
+        "MATE1106",
+        "MATE1253",
+        "MATE2711",
+        "MATE1252",
+        "MATE1207C"
+      ],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "MATE2210",
+      "code": "MATE 2210",
+      "codeNormalized": "MATE2210",
+      "name": "VARIABLE COMPLEJA (INGENIERÏA)",
+      "credits": 2,
+      "semester": 3,
+      "type": "nucleo",
+      "isPlaceholder": false,
+      "prereqText": "MATE 1207* O MATE 1208*",
+      "coreqText": "",
+      "prereqTree": {
+        "op": "OR",
+        "items": [
+          {
+            "op": "COURSE",
+            "code": "MATE1207",
+            "soft": true
+          },
+          {
+            "op": "COURSE",
+            "code": "MATE1208",
+            "soft": true
+          }
+        ]
+      },
+      "prereqCourseIds": [
+        "MATE1207"
+      ],
+      "prereqExternal": [
+        "MATE1208"
+      ],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "FISI1528",
+      "code": "FISI 1528",
+      "codeNormalized": "FISI1528",
+      "name": "FISICA II (REFORMA 202020)",
+      "credits": 3,
+      "semester": 3,
+      "type": "nucleo",
+      "isPlaceholder": false,
+      "prereqText": "FISI 1518 O (FISI 1018 Y FISI 1019) O (FISI 1012 Y FISI 1013)",
+      "coreqText": "FISI-1528P",
+      "prereqTree": {
+        "op": "OR",
+        "items": [
+          {
+            "op": "OR",
+            "items": [
+              {
+                "op": "COURSE",
+                "code": "FISI1518",
+                "soft": false
+              },
+              {
+                "op": "AND",
+                "items": [
+                  {
+                    "op": "COURSE",
+                    "code": "FISI1018",
+                    "soft": false
+                  },
+                  {
+                    "op": "COURSE",
+                    "code": "FISI1019",
+                    "soft": false
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "op": "AND",
+            "items": [
+              {
+                "op": "COURSE",
+                "code": "FISI1012",
+                "soft": false
+              },
+              {
+                "op": "COURSE",
+                "code": "FISI1013",
+                "soft": false
+              }
+            ]
+          }
+        ]
+      },
+      "prereqCourseIds": [
+        "FISI1518"
+      ],
+      "prereqExternal": [
+        "FISI1018",
+        "FISI1019",
+        "FISI1012",
+        "FISI1013"
+      ],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "CBU-S3-1",
+      "code": "CBU",
+      "codeNormalized": "CBU",
+      "name": "CICLO BÁSICO UNIANDINO",
+      "credits": 3,
+      "semester": 3,
+      "type": "cbu",
+      "isPlaceholder": true,
+      "prereqText": "",
+      "coreqText": "",
+      "prereqTree": null,
+      "prereqCourseIds": [],
+      "prereqExternal": [],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "IELE2218",
+      "code": "IELE 2218",
+      "codeNormalized": "IELE2218",
+      "name": "PY: FORMULACIÓN Y GESTIÓN",
+      "credits": 2,
+      "semester": 4,
+      "type": "nucleo",
+      "isPlaceholder": false,
+      "prereqText": "IELE 1082 Y (IELE 2100 O IELE 2206)",
+      "coreqText": "",
+      "prereqTree": {
+        "op": "AND",
+        "items": [
+          {
+            "op": "COURSE",
+            "code": "IELE1082",
+            "soft": false
+          },
+          {
+            "op": "OR",
+            "items": [
+              {
+                "op": "COURSE",
+                "code": "IELE2100",
+                "soft": false
+              },
+              {
+                "op": "COURSE",
+                "code": "IELE2206",
+                "soft": false
+              }
+            ]
+          }
+        ]
+      },
+      "prereqCourseIds": [
+        "IELE1082",
+        "IELE2100",
+        "IELE2206"
+      ],
+      "prereqExternal": [],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "IELE2206",
+      "code": "IELE 2206",
+      "codeNormalized": "IELE2206",
+      "name": "FUNDAMENTOS DE ELECTRÓNICA",
+      "credits": 3,
+      "semester": 4,
+      "type": "nucleo",
+      "isPlaceholder": false,
+      "prereqText": "(IELE 1002 O IELE 1006 O IELE 1010) Y (MATE 1214* O MATE 1215*) Y (FISI 1528* O FISI 1028) Y (ESCR 1102 O LENG 1512)",
+      "coreqText": "IELE-2206L",
+      "prereqTree": {
+        "op": "AND",
+        "items": [
+          {
+            "op": "AND",
+            "items": [
+              {
+                "op": "AND",
+                "items": [
+                  {
+                    "op": "OR",
+                    "items": [
+                      {
+                        "op": "OR",
+                        "items": [
+                          {
+                            "op": "COURSE",
+                            "code": "IELE1002",
+                            "soft": false
+                          },
+                          {
+                            "op": "COURSE",
+                            "code": "IELE1006",
+                            "soft": false
+                          }
+                        ]
+                      },
+                      {
+                        "op": "COURSE",
+                        "code": "IELE1010",
+                        "soft": false
+                      }
+                    ]
+                  },
+                  {
+                    "op": "OR",
+                    "items": [
+                      {
+                        "op": "COURSE",
+                        "code": "MATE1214",
+                        "soft": true
+                      },
+                      {
+                        "op": "COURSE",
+                        "code": "MATE1215",
+                        "soft": true
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "op": "OR",
+                "items": [
+                  {
+                    "op": "COURSE",
+                    "code": "FISI1528",
+                    "soft": true
+                  },
+                  {
+                    "op": "COURSE",
+                    "code": "FISI1028",
+                    "soft": false
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "op": "OR",
+            "items": [
+              {
+                "op": "COURSE",
+                "code": "ESCR1102",
+                "soft": false
+              },
+              {
+                "op": "COURSE",
+                "code": "LENG1512",
+                "soft": false
+              }
+            ]
+          }
+        ]
+      },
+      "prereqCourseIds": [
+        "IELE1002",
+        "MATE1214",
+        "FISI1528"
+      ],
+      "prereqExternal": [
+        "IELE1006",
+        "IELE1010",
+        "MATE1215",
+        "FISI1028",
+        "ESCR1102",
+        "LENG1512"
+      ],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "IELE2002",
+      "code": "IELE 2002",
+      "codeNormalized": "IELE2002",
+      "name": "TEORÍA ELECTROMAGNÉTICA",
+      "credits": 3,
+      "semester": 4,
+      "type": "nucleo",
+      "isPlaceholder": false,
+      "prereqText": "(IELE 1002 O IELE 1006 O IELE 1010) Y (MATE 1207 O MATE 1208 O MATE 1257) Y (MATE 2210* O MATE 2211*) Y (FISI 1028 O FISI 1528)",
+      "coreqText": "IELE-2002L",
+      "prereqTree": {
+        "op": "AND",
+        "items": [
+          {
+            "op": "AND",
+            "items": [
+              {
+                "op": "AND",
+                "items": [
+                  {
+                    "op": "OR",
+                    "items": [
+                      {
+                        "op": "OR",
+                        "items": [
+                          {
+                            "op": "COURSE",
+                            "code": "IELE1002",
+                            "soft": false
+                          },
+                          {
+                            "op": "COURSE",
+                            "code": "IELE1006",
+                            "soft": false
+                          }
+                        ]
+                      },
+                      {
+                        "op": "COURSE",
+                        "code": "IELE1010",
+                        "soft": false
+                      }
+                    ]
+                  },
+                  {
+                    "op": "OR",
+                    "items": [
+                      {
+                        "op": "OR",
+                        "items": [
+                          {
+                            "op": "COURSE",
+                            "code": "MATE1207",
+                            "soft": false
+                          },
+                          {
+                            "op": "COURSE",
+                            "code": "MATE1208",
+                            "soft": false
+                          }
+                        ]
+                      },
+                      {
+                        "op": "COURSE",
+                        "code": "MATE1257",
+                        "soft": false
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "op": "OR",
+                "items": [
+                  {
+                    "op": "COURSE",
+                    "code": "MATE2210",
+                    "soft": true
+                  },
+                  {
+                    "op": "COURSE",
+                    "code": "MATE2211",
+                    "soft": true
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "op": "OR",
+            "items": [
+              {
+                "op": "COURSE",
+                "code": "FISI1028",
+                "soft": false
+              },
+              {
+                "op": "COURSE",
+                "code": "FISI1528",
+                "soft": false
+              }
+            ]
+          }
+        ]
+      },
+      "prereqCourseIds": [
+        "IELE1002",
+        "MATE1207",
+        "MATE2210",
+        "FISI1528"
+      ],
+      "prereqExternal": [
+        "IELE1006",
+        "IELE1010",
+        "MATE1208",
+        "MATE1257",
+        "MATE2211",
+        "FISI1028"
+      ],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "IIND2106",
+      "code": "IIND 2106",
+      "codeNormalized": "IIND2106",
+      "name": "PROBABILIDAD Y ESTADÍSITICA",
+      "credits": 3,
+      "semester": 4,
+      "type": "nucleo",
+      "isPlaceholder": false,
+      "prereqText": "(MATE 1214 O MATE 1215) Y (MATE 1105 O MATE 1106)",
+      "coreqText": "IIND-2106T",
+      "prereqTree": {
+        "op": "AND",
+        "items": [
+          {
+            "op": "OR",
+            "items": [
+              {
+                "op": "COURSE",
+                "code": "MATE1214",
+                "soft": false
+              },
+              {
+                "op": "COURSE",
+                "code": "MATE1215",
+                "soft": false
+              }
+            ]
+          },
+          {
+            "op": "OR",
+            "items": [
+              {
+                "op": "COURSE",
+                "code": "MATE1105",
+                "soft": false
+              },
+              {
+                "op": "COURSE",
+                "code": "MATE1106",
+                "soft": false
+              }
+            ]
+          }
+        ]
+      },
+      "prereqCourseIds": [
+        "MATE1214",
+        "MATE1105"
+      ],
+      "prereqExternal": [
+        "MATE1215",
+        "MATE1106"
+      ],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "IELEXXXX-S4-1",
+      "code": "IELE xxxx",
+      "codeNormalized": "IELEXXXX",
+      "name": "ECUACIONES DIFERENCIALES",
+      "credits": 3,
+      "semester": 4,
+      "type": "nucleo",
+      "isPlaceholder": true,
+      "prereqText": "",
+      "coreqText": "",
+      "prereqTree": null,
+      "prereqCourseIds": [],
+      "prereqExternal": [],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "CBU-S4-1",
+      "code": "CBU",
+      "codeNormalized": "CBU",
+      "name": "CICLO BÁSICO UNIANDINO",
+      "credits": 3,
+      "semester": 4,
+      "type": "cbu",
+      "isPlaceholder": true,
+      "prereqText": "",
+      "coreqText": "",
+      "prereqTree": null,
+      "prereqCourseIds": [],
+      "prereqExternal": [],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "IIND2401",
+      "code": "IIND 2401",
+      "codeNormalized": "IIND2401",
+      "name": "ANÁLISIS DE DECISIÓN DE INVERSIÖN",
+      "credits": 3,
+      "semester": 5,
+      "type": "nucleo",
+      "isPlaceholder": false,
+      "prereqText": "(MATE 1203 O MATE 1204) Y (   (   (IIND 2400 O IIND 2405) Y (ECON 2106 O ECON 2108)   ) O ICYA 1113 O ISIS 1001 O IELE 1000 O IGEN 1001 O IMEC 1000 O IQUI 1001 O ICYA 1114 O ICYA 1001 O IBIO 1000 O IBIO 1010 O IBIO 1100 O IALI 1031 O IQUI 1031 O IQYA 1031 O IELE 1218 O IELE 1118)",
+      "coreqText": "-",
+      "prereqTree": {
+        "op": "AND",
+        "items": [
+          {
+            "op": "OR",
+            "items": [
+              {
+                "op": "COURSE",
+                "code": "MATE1203",
+                "soft": false
+              },
+              {
+                "op": "COURSE",
+                "code": "MATE1204",
+                "soft": false
+              }
+            ]
+          },
+          {
+            "op": "OR",
+            "items": [
+              {
+                "op": "OR",
+                "items": [
+                  {
+                    "op": "OR",
+                    "items": [
+                      {
+                        "op": "OR",
+                        "items": [
+                          {
+                            "op": "OR",
+                            "items": [
+                              {
+                                "op": "OR",
+                                "items": [
+                                  {
+                                    "op": "OR",
+                                    "items": [
+                                      {
+                                        "op": "OR",
+                                        "items": [
+                                          {
+                                            "op": "OR",
+                                            "items": [
+                                              {
+                                                "op": "OR",
+                                                "items": [
+                                                  {
+                                                    "op": "OR",
+                                                    "items": [
+                                                      {
+                                                        "op": "OR",
+                                                        "items": [
+                                                          {
+                                                            "op": "OR",
+                                                            "items": [
+                                                              {
+                                                                "op": "OR",
+                                                                "items": [
+                                                                  {
+                                                                    "op": "OR",
+                                                                    "items": [
+                                                                      {
+                                                                        "op": "OR",
+                                                                        "items": [
+                                                                          {
+                                                                            "op": "AND",
+                                                                            "items": [
+                                                                              {
+                                                                                "op": "OR",
+                                                                                "items": [
+                                                                                  {
+                                                                                    "op": "COURSE",
+                                                                                    "code": "IIND2400",
+                                                                                    "soft": false
+                                                                                  },
+                                                                                  {
+                                                                                    "op": "COURSE",
+                                                                                    "code": "IIND2405",
+                                                                                    "soft": false
+                                                                                  }
+                                                                                ]
+                                                                              },
+                                                                              {
+                                                                                "op": "OR",
+                                                                                "items": [
+                                                                                  {
+                                                                                    "op": "COURSE",
+                                                                                    "code": "ECON2106",
+                                                                                    "soft": false
+                                                                                  },
+                                                                                  {
+                                                                                    "op": "COURSE",
+                                                                                    "code": "ECON2108",
+                                                                                    "soft": false
+                                                                                  }
+                                                                                ]
+                                                                              }
+                                                                            ]
+                                                                          },
+                                                                          {
+                                                                            "op": "COURSE",
+                                                                            "code": "ICYA1113",
+                                                                            "soft": false
+                                                                          }
+                                                                        ]
+                                                                      },
+                                                                      {
+                                                                        "op": "COURSE",
+                                                                        "code": "ISIS1001",
+                                                                        "soft": false
+                                                                      }
+                                                                    ]
+                                                                  },
+                                                                  {
+                                                                    "op": "COURSE",
+                                                                    "code": "IELE1000",
+                                                                    "soft": false
+                                                                  }
+                                                                ]
+                                                              },
+                                                              {
+                                                                "op": "COURSE",
+                                                                "code": "IGEN1001",
+                                                                "soft": false
+                                                              }
+                                                            ]
+                                                          },
+                                                          {
+                                                            "op": "COURSE",
+                                                            "code": "IMEC1000",
+                                                            "soft": false
+                                                          }
+                                                        ]
+                                                      },
+                                                      {
+                                                        "op": "COURSE",
+                                                        "code": "IQUI1001",
+                                                        "soft": false
+                                                      }
+                                                    ]
+                                                  },
+                                                  {
+                                                    "op": "COURSE",
+                                                    "code": "ICYA1114",
+                                                    "soft": false
+                                                  }
+                                                ]
+                                              },
+                                              {
+                                                "op": "COURSE",
+                                                "code": "ICYA1001",
+                                                "soft": false
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "op": "COURSE",
+                                            "code": "IBIO1000",
+                                            "soft": false
+                                          }
+                                        ]
+                                      },
+                                      {
+                                        "op": "COURSE",
+                                        "code": "IBIO1010",
+                                        "soft": false
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "op": "COURSE",
+                                    "code": "IBIO1100",
+                                    "soft": false
+                                  }
+                                ]
+                              },
+                              {
+                                "op": "COURSE",
+                                "code": "IALI1031",
+                                "soft": false
+                              }
+                            ]
+                          },
+                          {
+                            "op": "COURSE",
+                            "code": "IQUI1031",
+                            "soft": false
+                          }
+                        ]
+                      },
+                      {
+                        "op": "COURSE",
+                        "code": "IQYA1031",
+                        "soft": false
+                      }
+                    ]
+                  },
+                  {
+                    "op": "COURSE",
+                    "code": "IELE1218",
+                    "soft": false
+                  }
+                ]
+              },
+              {
+                "op": "COURSE",
+                "code": "IELE1118",
+                "soft": false
+              }
+            ]
+          }
+        ]
+      },
+      "prereqCourseIds": [
+        "MATE1203",
+        "IELE1118"
+      ],
+      "prereqExternal": [
+        "MATE1204",
+        "IIND2400",
+        "IIND2405",
+        "ECON2106",
+        "ECON2108",
+        "ICYA1113",
+        "ISIS1001",
+        "IELE1000",
+        "IGEN1001",
+        "IMEC1000",
+        "IQUI1001",
+        "ICYA1114",
+        "ICYA1001",
+        "IBIO1000",
+        "IBIO1010",
+        "IBIO1100",
+        "IALI1031",
+        "IQUI1031",
+        "IQYA1031",
+        "IELE1218"
+      ],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "IELE2009",
+      "code": "IELE 2009",
+      "codeNormalized": "IELE2009",
+      "name": "COMPUTACIÓN CIENTÍFICA",
+      "credits": 3,
+      "semester": 5,
+      "type": "nucleo",
+      "isPlaceholder": false,
+      "prereqText": "ISIS 1221 Y MATE 1207",
+      "coreqText": "IELE-2009L",
+      "prereqTree": {
+        "op": "AND",
+        "items": [
+          {
+            "op": "COURSE",
+            "code": "ISIS1221",
+            "soft": false
+          },
+          {
+            "op": "COURSE",
+            "code": "MATE1207",
+            "soft": false
+          }
+        ]
+      },
+      "prereqCourseIds": [
+        "ISIS1221",
+        "MATE1207"
+      ],
+      "prereqExternal": [],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "IELE2402",
+      "code": "IELE 2402",
+      "codeNormalized": "IELE2402",
+      "name": "COMUNICACIONES",
+      "credits": 3,
+      "semester": 5,
+      "type": "nucleo",
+      "isPlaceholder": false,
+      "prereqText": "IELE 2500 Y IIND 2106",
+      "coreqText": "IELE-2402L",
+      "prereqTree": {
+        "op": "AND",
+        "items": [
+          {
+            "op": "COURSE",
+            "code": "IELE2500",
+            "soft": false
+          },
+          {
+            "op": "COURSE",
+            "code": "IIND2106",
+            "soft": false
+          }
+        ]
+      },
+      "prereqCourseIds": [
+        "IELE2500",
+        "IIND2106"
+      ],
+      "prereqExternal": [],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "IELE2300",
+      "code": "IELE 2300",
+      "codeNormalized": "IELE2300",
+      "name": "ANÁLISIS DE SISTEMAS DE CONTROL",
+      "credits": 3,
+      "semester": 5,
+      "type": "nucleo",
+      "isPlaceholder": false,
+      "prereqText": "(MATE 1207 O MATE 1208 O MATE 1257) Y (FISI 1028 O FISI 1528)",
+      "coreqText": "IELE-2300L",
+      "prereqTree": {
+        "op": "AND",
+        "items": [
+          {
+            "op": "OR",
+            "items": [
+              {
+                "op": "OR",
+                "items": [
+                  {
+                    "op": "COURSE",
+                    "code": "MATE1207",
+                    "soft": false
+                  },
+                  {
+                    "op": "COURSE",
+                    "code": "MATE1208",
+                    "soft": false
+                  }
+                ]
+              },
+              {
+                "op": "COURSE",
+                "code": "MATE1257",
+                "soft": false
+              }
+            ]
+          },
+          {
+            "op": "OR",
+            "items": [
+              {
+                "op": "COURSE",
+                "code": "FISI1028",
+                "soft": false
+              },
+              {
+                "op": "COURSE",
+                "code": "FISI1528",
+                "soft": false
+              }
+            ]
+          }
+        ]
+      },
+      "prereqCourseIds": [
+        "MATE1207",
+        "FISI1528"
+      ],
+      "prereqExternal": [
+        "MATE1208",
+        "MATE1257",
+        "FISI1028"
+      ],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "IELE3102",
+      "code": "IELE 3102",
+      "codeNormalized": "IELE3102",
+      "name": "ANÁLISIS DE SISTEMAS DE POTENCIA",
+      "credits": 3,
+      "semester": 5,
+      "type": "nucleo",
+      "isPlaceholder": false,
+      "prereqText": "IELE 2100 Y (MATE 1207 O MATE 1208 O MATE 1257) Y (MATE 2210 O MATE 2211)",
+      "coreqText": "-",
+      "prereqTree": {
+        "op": "AND",
+        "items": [
+          {
+            "op": "AND",
+            "items": [
+              {
+                "op": "COURSE",
+                "code": "IELE2100",
+                "soft": false
+              },
+              {
+                "op": "OR",
+                "items": [
+                  {
+                    "op": "OR",
+                    "items": [
+                      {
+                        "op": "COURSE",
+                        "code": "MATE1207",
+                        "soft": false
+                      },
+                      {
+                        "op": "COURSE",
+                        "code": "MATE1208",
+                        "soft": false
+                      }
+                    ]
+                  },
+                  {
+                    "op": "COURSE",
+                    "code": "MATE1257",
+                    "soft": false
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "op": "OR",
+            "items": [
+              {
+                "op": "COURSE",
+                "code": "MATE2210",
+                "soft": false
+              },
+              {
+                "op": "COURSE",
+                "code": "MATE2211",
+                "soft": false
+              }
+            ]
+          }
+        ]
+      },
+      "prereqCourseIds": [
+        "IELE2100",
+        "MATE1207",
+        "MATE2210"
+      ],
+      "prereqExternal": [
+        "MATE1208",
+        "MATE1257",
+        "MATE2211"
+      ],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "DERE1300",
+      "code": "DERE 1300",
+      "codeNormalized": "DERE1300",
+      "name": "CONSTITUCIÓN Y DEMOCRACIA",
+      "credits": 3,
+      "semester": 5,
+      "type": "nucleo",
+      "isPlaceholder": false,
+      "prereqText": "",
+      "coreqText": "",
+      "prereqTree": null,
+      "prereqCourseIds": [],
+      "prereqExternal": [],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "IELE301X-S6-1",
+      "code": "IELE 301X",
+      "codeNormalized": "IELE301X",
+      "name": "PROYECTO INGENIERIA EE",
+      "credits": 3,
+      "semester": 6,
+      "type": "proyecto",
+      "isPlaceholder": true,
+      "prereqText": "",
+      "coreqText": "",
+      "prereqTree": null,
+      "prereqCourseIds": [],
+      "prereqExternal": [],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "IELE3402",
+      "code": "IELE 3402",
+      "codeNormalized": "IELE3402",
+      "name": "REDES DE TELECOMUNICACIONES",
+      "credits": 3,
+      "semester": 6,
+      "type": "nucleo",
+      "isPlaceholder": false,
+      "prereqText": "IELE 2402",
+      "coreqText": "IELE-3403",
+      "prereqTree": {
+        "op": "COURSE",
+        "code": "IELE2402",
+        "soft": false
+      },
+      "prereqCourseIds": [
+        "IELE2402"
+      ],
+      "prereqExternal": [],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "IELE3006",
+      "code": "IELE 3006",
+      "codeNormalized": "IELE3006",
+      "name": "OPTIMIZACIÓN",
+      "credits": 3,
+      "semester": 6,
+      "type": "nucleo",
+      "isPlaceholder": false,
+      "prereqText": "IIND 2106 Y IELE 2009 Y (LENG 2999 O LENG 1156 O ENGL7  O INLE4  O RLEC1  O RLEN1 )",
+      "coreqText": "IELE-3006L",
+      "prereqTree": {
+        "op": "AND",
+        "items": [
+          {
+            "op": "AND",
+            "items": [
+              {
+                "op": "COURSE",
+                "code": "IIND2106",
+                "soft": false
+              },
+              {
+                "op": "COURSE",
+                "code": "IELE2009",
+                "soft": false
+              }
+            ]
+          },
+          {
+            "op": "OR",
+            "items": [
+              {
+                "op": "OR",
+                "items": [
+                  {
+                    "op": "OR",
+                    "items": [
+                      {
+                        "op": "OR",
+                        "items": [
+                          {
+                            "op": "OR",
+                            "items": [
+                              {
+                                "op": "COURSE",
+                                "code": "LENG2999",
+                                "soft": false
+                              },
+                              {
+                                "op": "COURSE",
+                                "code": "LENG1156",
+                                "soft": false
+                              }
+                            ]
+                          },
+                          {
+                            "op": "COURSE",
+                            "code": "ENGL7",
+                            "soft": false
+                          }
+                        ]
+                      },
+                      {
+                        "op": "COURSE",
+                        "code": "INLE4",
+                        "soft": false
+                      }
+                    ]
+                  },
+                  {
+                    "op": "COURSE",
+                    "code": "RLEC1",
+                    "soft": false
+                  }
+                ]
+              },
+              {
+                "op": "COURSE",
+                "code": "RLEN1",
+                "soft": false
+              }
+            ]
+          }
+        ]
+      },
+      "prereqCourseIds": [
+        "IIND2106",
+        "IELE2009"
+      ],
+      "prereqExternal": [
+        "LENG2999",
+        "LENG1156",
+        "ENGL7",
+        "INLE4",
+        "RLEC1",
+        "RLEN1"
+      ],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "IELE3106",
+      "code": "IELE 3106",
+      "codeNormalized": "IELE3106",
+      "name": "ELECTRÓNICA DE POTENCIA",
+      "credits": 2,
+      "semester": 6,
+      "type": "nucleo",
+      "isPlaceholder": false,
+      "prereqText": "IELE 2100 Y (LENG 2999 O LENG 1156 O ENGL7  O RLEC1 ) Y (MATE 1207 O MATE 1208 O MATE 1257) Y (FISI 1029 O FISI 1528)",
+      "coreqText": "IELE-3106L",
+      "prereqTree": {
+        "op": "AND",
+        "items": [
+          {
+            "op": "AND",
+            "items": [
+              {
+                "op": "AND",
+                "items": [
+                  {
+                    "op": "COURSE",
+                    "code": "IELE2100",
+                    "soft": false
+                  },
+                  {
+                    "op": "OR",
+                    "items": [
+                      {
+                        "op": "OR",
+                        "items": [
+                          {
+                            "op": "OR",
+                            "items": [
+                              {
+                                "op": "COURSE",
+                                "code": "LENG2999",
+                                "soft": false
+                              },
+                              {
+                                "op": "COURSE",
+                                "code": "LENG1156",
+                                "soft": false
+                              }
+                            ]
+                          },
+                          {
+                            "op": "COURSE",
+                            "code": "ENGL7",
+                            "soft": false
+                          }
+                        ]
+                      },
+                      {
+                        "op": "COURSE",
+                        "code": "RLEC1",
+                        "soft": false
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "op": "OR",
+                "items": [
+                  {
+                    "op": "OR",
+                    "items": [
+                      {
+                        "op": "COURSE",
+                        "code": "MATE1207",
+                        "soft": false
+                      },
+                      {
+                        "op": "COURSE",
+                        "code": "MATE1208",
+                        "soft": false
+                      }
+                    ]
+                  },
+                  {
+                    "op": "COURSE",
+                    "code": "MATE1257",
+                    "soft": false
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "op": "OR",
+            "items": [
+              {
+                "op": "COURSE",
+                "code": "FISI1029",
+                "soft": false
+              },
+              {
+                "op": "COURSE",
+                "code": "FISI1528",
+                "soft": false
+              }
+            ]
+          }
+        ]
+      },
+      "prereqCourseIds": [
+        "IELE2100",
+        "MATE1207",
+        "FISI1528"
+      ],
+      "prereqExternal": [
+        "LENG2999",
+        "LENG1156",
+        "ENGL7",
+        "RLEC1",
+        "MATE1208",
+        "MATE1257",
+        "FISI1029"
+      ],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "IELE3110",
+      "code": "IELE 3110",
+      "codeNormalized": "IELE3110",
+      "name": "ECONOMÍA DE SISTEMAS DE POTENCIA",
+      "credits": 3,
+      "semester": 6,
+      "type": "nucleo",
+      "isPlaceholder": false,
+      "prereqText": "",
+      "coreqText": "",
+      "prereqTree": null,
+      "prereqCourseIds": [],
+      "prereqExternal": [],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "EFI-S6-1",
+      "code": "EFI",
+      "codeNormalized": "EFI",
+      "name": "ELECTIVA EN FUNDAMENTOS DE INGENIERÍA",
+      "credits": 3,
+      "semester": 6,
+      "type": "electiva",
+      "isPlaceholder": true,
+      "prereqText": "",
+      "coreqText": "",
+      "prereqTree": null,
+      "prereqCourseIds": [],
+      "prereqExternal": [],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "IELE3502",
+      "code": "IELE 3502",
+      "codeNormalized": "IELE3502",
+      "name": "ANÁLISIS Y ESTIMACIÓN SD",
+      "credits": 3,
+      "semester": 7,
+      "type": "nucleo",
+      "isPlaceholder": false,
+      "prereqText": "",
+      "coreqText": "",
+      "prereqTree": null,
+      "prereqCourseIds": [],
+      "prereqExternal": [],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "IELE2010",
+      "code": "IELE 2010",
+      "codeNormalized": "IELE2010",
+      "name": "MATERIALES PARA IEE",
+      "credits": 3,
+      "semester": 7,
+      "type": "nucleo",
+      "isPlaceholder": false,
+      "prereqText": "(MATE 1214 O MATE 1215) Y (FISI 1028 O FISI 1528)",
+      "coreqText": "IELE-2010L",
+      "prereqTree": {
+        "op": "AND",
+        "items": [
+          {
+            "op": "OR",
+            "items": [
+              {
+                "op": "COURSE",
+                "code": "MATE1214",
+                "soft": false
+              },
+              {
+                "op": "COURSE",
+                "code": "MATE1215",
+                "soft": false
+              }
+            ]
+          },
+          {
+            "op": "OR",
+            "items": [
+              {
+                "op": "COURSE",
+                "code": "FISI1028",
+                "soft": false
+              },
+              {
+                "op": "COURSE",
+                "code": "FISI1528",
+                "soft": false
+              }
+            ]
+          }
+        ]
+      },
+      "prereqCourseIds": [
+        "MATE1214",
+        "FISI1528"
+      ],
+      "prereqExternal": [
+        "MATE1215",
+        "FISI1028"
+      ],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "IELEELECTIVA-S7-1",
+      "code": "IELE ELECTIVA",
+      "codeNormalized": "IELEELECTIVA",
+      "name": "ELECTIVA IELE",
+      "credits": 2,
+      "semester": 7,
+      "type": "electiva",
+      "isPlaceholder": true,
+      "prereqText": "",
+      "coreqText": "",
+      "prereqTree": null,
+      "prereqCourseIds": [],
+      "prereqExternal": [],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "IELEELECTIVA-S7-2",
+      "code": "IELE ELECTIVA",
+      "codeNormalized": "IELEELECTIVA",
+      "name": "ELECTIVA IELE",
+      "credits": 2,
+      "semester": 7,
+      "type": "electiva",
+      "isPlaceholder": true,
+      "prereqText": "",
+      "coreqText": "",
+      "prereqTree": null,
+      "prereqCourseIds": [],
+      "prereqExternal": [],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "IELECI-S7-1",
+      "code": "IELE CI",
+      "codeNormalized": "IELECI",
+      "name": "CURSO INTEGRADOR",
+      "credits": 3,
+      "semester": 7,
+      "type": "nucleo",
+      "isPlaceholder": true,
+      "prereqText": "",
+      "coreqText": "",
+      "prereqTree": null,
+      "prereqCourseIds": [],
+      "prereqExternal": [],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "CLE-S7-1",
+      "code": "CLE",
+      "codeNormalized": "CLE",
+      "name": "CURSO DE LIBRE ELECCIÓN",
+      "credits": 3,
+      "semester": 7,
+      "type": "complementaria",
+      "isPlaceholder": true,
+      "prereqText": "",
+      "coreqText": "",
+      "prereqTree": null,
+      "prereqCourseIds": [],
+      "prereqExternal": [],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "IELE3118",
+      "code": "IELE 3118",
+      "codeNormalized": "IELE3118",
+      "name": "PROYECTO DE DISEÑO IELE",
+      "credits": 3,
+      "semester": 8,
+      "type": "proyecto",
+      "isPlaceholder": false,
+      "prereqText": "",
+      "coreqText": "",
+      "prereqTree": null,
+      "prereqCourseIds": [],
+      "prereqExternal": [],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "IELEELECTIVA-S8-1",
+      "code": "IELE ELECTIVA",
+      "codeNormalized": "IELEELECTIVA",
+      "name": "ELECTIVA IELE",
+      "credits": 2,
+      "semester": 8,
+      "type": "electiva",
+      "isPlaceholder": true,
+      "prereqText": "",
+      "coreqText": "",
+      "prereqTree": null,
+      "prereqCourseIds": [],
+      "prereqExternal": [],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "IELEELECTIVA-S8-2",
+      "code": "IELE ELECTIVA",
+      "codeNormalized": "IELEELECTIVA",
+      "name": "ELECTIVA IELE",
+      "credits": 2,
+      "semester": 8,
+      "type": "electiva",
+      "isPlaceholder": true,
+      "prereqText": "",
+      "coreqText": "",
+      "prereqTree": null,
+      "prereqCourseIds": [],
+      "prereqExternal": [],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "CLE-S8-1",
+      "code": "CLE",
+      "codeNormalized": "CLE",
+      "name": "CURSO DE LIBRE ELECCIÓN",
+      "credits": 3,
+      "semester": 8,
+      "type": "complementaria",
+      "isPlaceholder": true,
+      "prereqText": "",
+      "coreqText": "",
+      "prereqTree": null,
+      "prereqCourseIds": [],
+      "prereqExternal": [],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "CBU-S8-1",
+      "code": "CBU",
+      "codeNormalized": "CBU",
+      "name": "CICLO BÁSICO UNIANDINO",
+      "credits": 3,
+      "semester": 8,
+      "type": "cbu",
+      "isPlaceholder": true,
+      "prereqText": "",
+      "coreqText": "",
+      "prereqTree": null,
+      "prereqCourseIds": [],
+      "prereqExternal": [],
+      "coreqCourseIds": []
+    },
+    {
+      "id": "CBU-S8-2",
+      "code": "CBU",
+      "codeNormalized": "CBU",
+      "name": "CICLO BÁSICO UNIANDINO",
+      "credits": 3,
+      "semester": 8,
+      "type": "cbu",
+      "isPlaceholder": true,
+      "prereqText": "",
+      "coreqText": "",
+      "prereqTree": null,
+      "prereqCourseIds": [],
+      "prereqExternal": [],
+      "coreqCourseIds": []
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+# dependencies / build output
+node_modules/
+**/node_modules/
+web/.next/
+web/out/
+app/dist/
+*.tsbuildinfo
+web/next-env.d.ts
+
+# local env + sqlite database (contains ADMIN_PASSWORD / SESSION_SECRET)
+.env
+web/.env
+web/prisma/*.db
+web/prisma/*.db-journal
+web/prisma/*.db-*
+
+# editor / OS
+.~lock.*#
+.DS_Store
+*.log
