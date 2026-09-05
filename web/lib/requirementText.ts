@@ -2,7 +2,10 @@ import type { Course, ReqNode } from "./types";
 
 function codeLabel(code: string, byNormalized: Map<string, Course>): string {
   const course = byNormalized.get(code);
-  return course ? `${course.code} (${course.name})` : code;
+  if (course) return `${course.code} (${course.name})`;
+  // not a catalog course (a lab/practice companion, a language exam, …):
+  // space the prefix from the number so "IELE1118L" reads as "IELE 1118L"
+  return code.replace(/^([A-ZÑ]{2,6})(\d.*)$/, "$1 $2");
 }
 
 function render(

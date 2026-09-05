@@ -4,7 +4,14 @@
 // from the stored prereq/coreq trees.
 
 import { prisma } from "./db";
-import type { CatalogPayload, Course, OfferingBadge, ReqNode } from "./types";
+import type {
+  CatalogPayload,
+  CatalogRules,
+  Course,
+  ElectiveDTO,
+  OfferingBadge,
+  ReqNode,
+} from "./types";
 import { collectCourseCodes } from "./import/requirementParser";
 import { normalizeCode } from "./import/normalizeCode";
 
@@ -56,11 +63,13 @@ export async function buildCatalogPayload(slug: string): Promise<CatalogPayload 
       .filter(Boolean);
     const prereqExternal = allPrereq.filter((c) => !catalogCodes.has(c));
 
-    const coreqNorm = cc.coreqText ? normalizeCode(cc.coreqText) : "";
-    const coreqCourseIds =
-      coreqNorm && catalogCodes.has(coreqNorm) && idByCode.get(coreqNorm)
-        ? [idByCode.get(coreqNorm)!]
-        : [];
+    const coreqTree = (cc.coreqTree as ReqNode | null) ?? null;
+    const allCoreq = [...collectCourseCodes(coreqTree)];
+    const coreqCourseIds = allCoreq
+      .filter((c) => catalogCodes.has(c))
+      .map((c) => idByCode.get(c)!)
+      .filter(Boolean);
+    const coreqExternal = allCoreq.filter((c) => !catalogCodes.has(c));
 
     return {
       id,
@@ -71,12 +80,16 @@ export async function buildCatalogPayload(slug: string): Promise<CatalogPayload 
       semester: cc.suggestedSemester,
       type: cc.courseType as Course["type"],
       isPlaceholder: cc.isPlaceholder,
+      placeholderKind: cc.placeholderKind,
+      placeholderLabel: cc.placeholderLabel,
       prereqText: cc.prereqText ?? "",
       coreqText: cc.coreqText ?? "",
       prereqTree,
       prereqCourseIds,
       prereqExternal,
+      coreqTree,
       coreqCourseIds,
+      coreqExternal,
     };
   });
 
@@ -104,6 +117,17 @@ export async function buildCatalogPayload(slug: string): Promise<CatalogPayload 
     orderBy: [{ programCode: "asc" }, { slug: "asc" }],
   });
 
+  const electiveRows = await prisma.elective.findMany({ orderBy: { name: "asc" } });
+  const electives: ElectiveDTO[] = electiveRows.map((e) => ({
+    id: e.id,
+    name: e.name,
+    code: e.code,
+    level: e.level as ElectiveDTO["level"],
+    ciclo: e.ciclo,
+    roles: e.roles as unknown as ElectiveDTO["roles"],
+    offeredTerms: (e.offeredTerms as unknown as string[] | null) ?? [],
+  }));
+
   return {
     generatedAt: new Date().toISOString(),
     catalog: {
@@ -113,6 +137,10 @@ export async function buildCatalogPayload(slug: string): Promise<CatalogPayload 
       variantLabel: catalog.variantLabel,
       term: catalog.term,
       status: catalog.status,
+      accentColor: catalog.accentColor,
+      tagline: catalog.tagline,
+      subtitle: catalog.subtitle,
+      imagePath: catalog.imagePath,
     },
     program: {
       code: catalog.programCode,
@@ -122,5 +150,10 @@ export async function buildCatalogPayload(slug: string): Promise<CatalogPayload 
     courses,
     offerings,
     siblings,
+    electives,
+    rules: ((catalog.rules as CatalogRules | null) ?? {
+      gates: [],
+      attestations: [],
+    }) as CatalogRules,
   };
 }

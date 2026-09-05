@@ -1,4 +1,10 @@
-import type { AvailabilityStatus, Course, ReqNode } from "./types";
+import type {
+  AvailabilityStatus,
+  CatalogRules,
+  Course,
+  ReqNode,
+} from "./types";
+import { collectCourseCodes } from "./import/requirementParser";
 
 // Appendix A of the product doc, adapted to the AND/OR/COURSE tree shape
 // produced by the build-time requirement parser.
@@ -72,26 +78,156 @@ export function missingCodes(
 
 export interface CourseAvailability {
   status: AvailabilityStatus;
-  missing: string[]; // course codes still needed (in-catalog or external)
+  missing: string[]; // PREREQUISITE codes still needed (must be approved first)
+  /** in-catalog COREQUISITES that aren't approved and can't be taken this term
+   * either (their own prereqs are unmet) — they hold this course back too */
+  coreqBlockers: string[];
+  /** human labels of unmet admin progression rules — non-empty ⇒ course is
+   * locked regardless of prereq status */
+  gateReasons: string[];
 }
 
 export function catalogCodesOf(courses: Course[]): Set<string> {
   return new Set(courses.map((c) => c.codeNormalized));
 }
 
+export interface RuleContext {
+  rules?: CatalogRules;
+  attestationsMet?: Set<string>;
+  /** total approved credits (creditsSummary().done) — for minCredits gates */
+  approvedCredits?: number;
+}
+
+function safeRegex(src: string): RegExp | null {
+  try {
+    return new RegExp(src);
+  } catch {
+    return null;
+  }
+}
+
+function courseMatches(
+  course: Course,
+  sel: { codeRegex?: string; semesters?: number[]; ids?: string[] }
+): boolean {
+  if (sel.ids?.includes(course.id)) return true;
+  if (sel.semesters?.includes(course.semester)) return true;
+  if (sel.codeRegex) {
+    const re = safeRegex(sel.codeRegex);
+    if (re && re.test(course.codeNormalized)) return true;
+  }
+  return false;
+}
+
+/** Unmet admin-rule labels for a course. Empty ⇒ not locked by rules. */
+export function evaluateGates(
+  course: Course,
+  approved: Set<string>,
+  allCourses: Course[],
+  ctx: RuleContext
+): string[] {
+  const rules = ctx.rules;
+  if (!rules || course.isPlaceholder) return [];
+  const met = ctx.attestationsMet ?? new Set<string>();
+  const reasons: string[] = [];
+
+  // attestation auto-gates: any prereq code matching the regex locks the course
+  for (const att of rules.attestations ?? []) {
+    if (!att.autoGatePrereqRegex || met.has(att.id)) continue;
+    const re = safeRegex(att.autoGatePrereqRegex);
+    if (!re) continue;
+    const codes = collectCourseCodes(course.prereqTree);
+    if ([...codes].some((c) => re.test(c))) reasons.push(att.label);
+  }
+
+  // explicit gate rules
+  for (const gate of rules.gates ?? []) {
+    if (!courseMatches(course, gate.appliesTo)) continue;
+    const c = gate.condition;
+    let unmet = false;
+
+    if (c.allApprovedMatching) {
+      const re = safeRegex(c.allApprovedMatching);
+      if (re) {
+        const targets = allCourses.filter(
+          (x) => !x.isPlaceholder && re.test(x.codeNormalized)
+        );
+        if (targets.some((x) => !approved.has(x.id))) unmet = true;
+      }
+    }
+    if (!unmet && typeof c.maxApprovedSemester === "number") {
+      const targets = allCourses.filter(
+        (x) => !x.isPlaceholder && x.semester <= c.maxApprovedSemester!
+      );
+      if (targets.some((x) => !approved.has(x.id))) unmet = true;
+    }
+    if (!unmet && typeof c.minCredits === "number") {
+      if ((ctx.approvedCredits ?? 0) < c.minCredits) unmet = true;
+    }
+    if (!unmet && c.attestationId) {
+      if (!met.has(c.attestationId)) unmet = true;
+    }
+
+    if (unmet) reasons.push(gate.label);
+  }
+
+  return reasons;
+}
+
+/**
+ * Prerequisites must be *approved* before a course can be taken. Corequisites
+ * only need to be taken the same term (or earlier) — so an un-approved coreq
+ * blocks a course ONLY when the coreq itself can't be taken this term.
+ */
 export function courseAvailability(
   course: Course,
   approved: Set<string>,
-  catalogCodes: Set<string>
+  catalogCodes: Set<string>,
+  allCourses?: Course[],
+  ruleCtx?: RuleContext
 ): CourseAvailability {
-  if (approved.has(course.id)) return { status: "approved", missing: [] };
-  if (satisfied(course.prereqTree, approved, catalogCodes)) {
-    return { status: "available", missing: [] };
+  if (approved.has(course.id)) {
+    return { status: "approved", missing: [], coreqBlockers: [], gateReasons: [] };
   }
-  const missing = [...missingCodes(course.prereqTree, approved, catalogCodes)];
+
+  // admin progression rules lock a course outright, regardless of prereqs
+  const gateReasons =
+    allCourses && ruleCtx?.rules
+      ? evaluateGates(course, approved, allCourses, ruleCtx)
+      : [];
+  if (gateReasons.length > 0) {
+    return { status: "blocked", missing: [], coreqBlockers: [], gateReasons };
+  }
+
+  const prereqOk = satisfied(course.prereqTree, approved, catalogCodes);
+  const missing = prereqOk
+    ? []
+    : [...missingCodes(course.prereqTree, approved, catalogCodes)];
+
+  // A coreq is fine if it's already approved, or if it could be co-enrolled
+  // this term (its own prerequisites are met).
+  const coreqBlockers: string[] = [];
+  if (allCourses && course.coreqCourseIds.length > 0) {
+    const byId = new Map(allCourses.map((c) => [c.id, c]));
+    for (const coId of course.coreqCourseIds) {
+      const co = byId.get(coId);
+      if (!co) continue;
+      if (approved.has(co.id)) continue;
+      if (satisfied(co.prereqTree, approved, catalogCodes)) continue;
+      coreqBlockers.push(co.codeNormalized);
+    }
+  }
+
+  if (prereqOk && coreqBlockers.length === 0) {
+    return { status: "available", missing: [], coreqBlockers: [], gateReasons: [] };
+  }
+
+  const blockCount = missing.length + coreqBlockers.length;
   return {
-    status: missing.length <= 1 ? "one-away" : "blocked",
+    status: blockCount <= 1 ? "one-away" : "blocked",
     missing,
+    coreqBlockers,
+    gateReasons: [],
   };
 }
 

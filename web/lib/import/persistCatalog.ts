@@ -19,6 +19,15 @@ export interface PersistOptions {
   concurrency?: number;
   /** share an offerings cache across several persist calls in one run */
   cache?: OfferingsCache;
+  /** presentation identity written onto the Catalog row */
+  identity?: {
+    accentColor?: string | null;
+    tagline?: string | null;
+    subtitle?: string | null;
+    imagePath?: string | null;
+  };
+  /** admin progression rules ({ gates, attestations }) written onto Catalog.rules */
+  rules?: unknown;
 }
 
 export interface PersistResult {
@@ -46,6 +55,7 @@ export async function persistParsedCatalog(
   opts: PersistOptions
 ): Promise<PersistResult> {
   const status = opts.status ?? "draft";
+  const identity = opts.identity ?? {};
 
   // 1. upsert the Catalog row
   const catalog = await prisma.catalog.upsert({
@@ -58,6 +68,11 @@ export async function persistParsedCatalog(
       status,
       term: opts.term,
       sourceFilename: opts.sourceFilename,
+      accentColor: identity.accentColor ?? null,
+      tagline: identity.tagline ?? null,
+      subtitle: identity.subtitle ?? null,
+      imagePath: identity.imagePath ?? null,
+      rules: (opts.rules ?? undefined) as Prisma.InputJsonValue | undefined,
     },
     update: {
       programCode: parsed.programCode,
@@ -66,6 +81,13 @@ export async function persistParsedCatalog(
       status,
       term: opts.term,
       sourceFilename: opts.sourceFilename,
+      ...(identity.accentColor !== undefined ? { accentColor: identity.accentColor } : {}),
+      ...(identity.tagline !== undefined ? { tagline: identity.tagline } : {}),
+      ...(identity.subtitle !== undefined ? { subtitle: identity.subtitle } : {}),
+      ...(identity.imagePath !== undefined ? { imagePath: identity.imagePath } : {}),
+      ...(opts.rules !== undefined
+        ? { rules: opts.rules as Prisma.InputJsonValue }
+        : {}),
     },
   });
 
@@ -96,6 +118,10 @@ export async function persistParsedCatalog(
     const pr = c.isPlaceholder ? undefined : prereqMap.get(c.normalizedCode);
     const prereqText = pr?.prereqText ?? "";
     const coreqText = pr?.coreqText ?? "";
+    // Coreq codes in the export are often hyphenated lab/practice companions
+    // ("IELE-1118L", "FISI-1518P"); a space lets the requirement tokenizer read
+    // them as "<PREFIX> <number><letter>".
+    const coreqExpr = coreqText.replace(/-/g, " ");
     return {
       catalogId: catalog.id,
       courseId: c.isPlaceholder ? null : (courseIdByCode.get(c.normalizedCode) ?? null),
@@ -111,7 +137,7 @@ export async function persistParsedCatalog(
       prereqText: prereqText || null,
       coreqText: coreqText || null,
       prereqTree: toInputJson(parseRequirement(prereqText)),
-      coreqTree: undefined,
+      coreqTree: toInputJson(parseRequirement(coreqExpr)),
       pairingStatus: c.isPlaceholder ? "needs_manual" : "needs_manual",
     };
   };

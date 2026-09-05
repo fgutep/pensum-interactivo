@@ -20,6 +20,13 @@ model Catalog {
   status         String   @default("draft") // draft | published | archived
   term           String // term offerings were synced against, e.g. "202620"
   sourceFilename String?
+  // --- presentation identity (shown on the picker card + the explorer header) ---
+  accentColor    String? // "#0e8a95"
+  tagline        String? // one-liner shown on the picker card
+  subtitle       String? // e.g. "CBU3 · 8 semestres"
+  imagePath      String? // "/assets/pensums/iele-cbu3.svg"
+  // --- admin progression rules: { gates: GateRule[], attestations: Attestation[] } ---
+  rules          Json?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -148,6 +155,23 @@ model CatalogSnapshot {
   catalog Catalog @relation(fields: [catalogId], references: [id], onDelete: Cascade)
 
   @@index([catalogId])
+}
+
+/// One row per elective course in the "BOLSA DE ELECTIVAS" spreadsheets. These
+/// sheets carry no course codes — only long names + per-program validity for two
+/// pensum eras. Indexed separately for Ing. Eléctrica (IELE) vs Electrónica (IELC).
+model Elective {
+  id             Int      @id @default(autoincrement())
+  name           String // long course name, as printed
+  normalizedName String   @unique // accent-folded, upper, space-collapsed
+  code           String? // paired course code if ever resolved (left null for now)
+  level          String // "pregrado" | "maestria" | "other"
+  ciclo          String? // from "MATERIAS MAESTRIA" sheet
+  roles          Json // { eleFrom2024:{norm,raw}, elcFrom2024, eleUntil2023, elcUntil2023 }
+  offeredTerms   Json // string[]  e.g. ["202620"]
+  sourceFiles    Json // string[]  provenance
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 model AuditLog {

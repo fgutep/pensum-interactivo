@@ -11,26 +11,13 @@ import {
   type FetchOpts,
 } from "../shared-oferta/fetcher";
 import type { OfferingsCache } from "./offeringsCache";
+import { tokenSetRatio } from "../import/textMatch";
 
 export interface HeuristicResult {
   suggestedCode?: string;
   candidateCodes?: string[];
   /** final pairing status for the slot */
   status: "needs_manual" | "placeholder_pool";
-}
-
-function foldAccents(s: string): string {
-  return s.normalize("NFD").replace(/\p{Diacritic}/gu, "").toUpperCase();
-}
-
-/** token-set overlap ratio in [0,1] */
-function tokenSetRatio(a: string, b: string): number {
-  const ta = new Set(foldAccents(a).split(/[^A-Z0-9]+/).filter((t) => t.length > 2));
-  const tb = new Set(foldAccents(b).split(/[^A-Z0-9]+/).filter((t) => t.length > 2));
-  if (ta.size === 0 || tb.size === 0) return 0;
-  let inter = 0;
-  for (const t of ta) if (tb.has(t)) inter++;
-  return inter / Math.max(ta.size, tb.size);
 }
 
 const prefixFromDisplay = (displayCode: string): string | null => {

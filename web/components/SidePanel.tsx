@@ -1,7 +1,14 @@
 "use client";
 
-import type { Course, AvailabilityStatus, OfferingBadge } from "@/lib/types";
+import type {
+  Course,
+  AvailabilityStatus,
+  ElectiveAssignment,
+  ElectiveDTO,
+  OfferingBadge,
+} from "@/lib/types";
 import { renderRequirement } from "@/lib/requirementText";
+import ElectivePicker from "./ElectivePicker";
 
 const TYPE_LABEL: Record<Course["type"], string> = {
   nucleo: "Núcleo",
@@ -24,14 +31,23 @@ interface Props {
   mode: "explore" | "progress";
   status: AvailabilityStatus | null;
   missing: string[];
+  coreqBlockers: string[];
+  gateReasons: string[];
   dependentsCount: number;
   approved: Set<string>;
   offering: OfferingBadge | undefined;
   term: string;
   mihorarioUrl: string;
+  electives: ElectiveDTO[];
+  programCode: string;
+  assignment: ElectiveAssignment | undefined;
+  onAssignElective: (slotId: string, a: ElectiveAssignment | null) => void;
   onToggleApproved: (id: string) => void;
+  onCollapse: () => void;
   onClose: () => void;
 }
+
+const ELECTIVE_SLOT_KINDS = new Set(["ELECTIVA", "EFI", "CLE"]);
 
 function seatsText(seats: [number, number] | undefined): string {
   if (!seats) return "";
@@ -111,12 +127,19 @@ export default function SidePanel({
   mode,
   status,
   missing,
+  coreqBlockers,
+  gateReasons,
   dependentsCount,
   approved,
   offering,
   term,
   mihorarioUrl,
+  electives,
+  programCode,
+  assignment,
+  onAssignElective,
   onToggleApproved,
+  onCollapse,
   onClose,
 }: Props) {
   if (!course) {
@@ -127,14 +150,29 @@ export default function SidePanel({
     );
   }
 
+  const isElectiveSlot =
+    course.isPlaceholder &&
+    (course.type === "electiva" ||
+      ELECTIVE_SLOT_KINDS.has(course.placeholderKind ?? ""));
+
   const byNormalized = new Map(allCourses.map((c) => [c.codeNormalized, c]));
-  const missingLabels = missing.map((code) => {
+  const label = (code: string) => {
     const c = byNormalized.get(code);
     return c ? `${c.code} — ${c.name}` : `${code} (fuera de este pensum)`;
-  });
+  };
+  const missingLabels = missing.map(label);
+  const coreqBlockerLabels = coreqBlockers.map(label);
 
   return (
     <aside className="side-panel">
+      <button
+        className="side-panel-collapse"
+        onClick={onCollapse}
+        aria-label="Ocultar panel"
+        title="Ocultar panel"
+      >
+        ›
+      </button>
       <button className="side-panel-close" onClick={onClose} aria-label="Cerrar">
         ×
       </button>
@@ -148,14 +186,33 @@ export default function SidePanel({
 
       {mode === "progress" && status && (
         <div className={`status-banner status-banner-${status}`}>
-          {STATUS_LABEL[status]}
+          {gateReasons.length > 0 ? "🔒 Bloqueada por una regla del plan" : STATUS_LABEL[status]}
         </div>
       )}
 
-      <section>
-        <h3>Prerrequisitos</h3>
+      {mode === "progress" && gateReasons.length > 0 && (
+        <section className="gate-section">
+          <h3>Reglas del plan por cumplir</h3>
+          <ul className="gate-list">
+            {gateReasons.map((r) => (
+              <li key={r}>{r}</li>
+            ))}
+          </ul>
+          <p className="gate-note">
+            Marca los requisitos cumplidos en <strong>Requisitos</strong> (barra
+            superior) o aprueba los cursos indicados.
+          </p>
+        </section>
+      )}
+
+      <section className="req-section req-prereq">
+        <h3>
+          Prerrequisitos <span className="req-hint">deben estar aprobados antes</span>
+        </h3>
         <p className="requirement-text">
-          {renderRequirement(course.prereqTree, allCourses)}
+          {course.prereqTree
+            ? renderRequirement(course.prereqTree, allCourses)
+            : "Sin prerrequisitos."}
         </p>
         {course.prereqExternal.length > 0 && (
           <p className="requirement-note">
@@ -165,16 +222,46 @@ export default function SidePanel({
         )}
       </section>
 
-      {mode === "progress" && status !== "approved" && missingLabels.length > 0 && (
-        <section>
-          <h3>Te falta</h3>
-          <ul className="missing-list">
-            {missingLabels.map((m) => (
-              <li key={m}>{m}</li>
-            ))}
-          </ul>
-        </section>
-      )}
+      <section className="req-section req-coreq">
+        <h3>
+          Correquisitos <span className="req-hint">se ven al tiempo (o antes)</span>
+        </h3>
+        <p className="requirement-text">
+          {course.coreqTree
+            ? renderRequirement(course.coreqTree, allCourses)
+            : "Sin correquisitos."}
+        </p>
+      </section>
+
+      {mode === "progress" &&
+        status !== "approved" &&
+        (missingLabels.length > 0 || coreqBlockerLabels.length > 0) && (
+          <section>
+            <h3>Te falta</h3>
+            {missingLabels.length > 0 && (
+              <>
+                <p className="missing-kind">Aprobar antes:</p>
+                <ul className="missing-list">
+                  {missingLabels.map((m) => (
+                    <li key={m}>{m}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+            {coreqBlockerLabels.length > 0 && (
+              <>
+                <p className="missing-kind">
+                  Poder inscribir al tiempo (correquisito bloqueado):
+                </p>
+                <ul className="missing-list missing-list-coreq">
+                  {coreqBlockerLabels.map((m) => (
+                    <li key={m}>{m}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </section>
+        )}
 
       <section>
         <h3>Impacto</h3>
@@ -194,10 +281,30 @@ export default function SidePanel({
         />
       )}
 
+      {isElectiveSlot && (
+        <ElectivePicker
+          electives={electives}
+          programCode={programCode}
+          slotLabel={course.placeholderLabel || course.code}
+          term={term}
+          mihorarioUrl={mihorarioUrl}
+          mode={mode}
+          assignment={assignment}
+          slotCredits={course.credits}
+          onAssign={(a) => onAssignElective(course.id, a)}
+        />
+      )}
+
       {mode === "progress" && !course.isPlaceholder && (
         <button
           className={`approve-toggle ${approved.has(course.id) ? "is-approved" : ""}`}
           onClick={() => onToggleApproved(course.id)}
+          disabled={gateReasons.length > 0 && !approved.has(course.id)}
+          title={
+            gateReasons.length > 0 && !approved.has(course.id)
+              ? "No puedes marcarla mientras una regla del plan la bloquee"
+              : undefined
+          }
         >
           {approved.has(course.id) ? "Desmarcar como vista" : "Marcar como vista"}
         </button>

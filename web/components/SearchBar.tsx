@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import type { CourseType } from "@/lib/types";
 
 const TYPE_OPTIONS: { value: CourseType | "all"; label: string }[] = [
@@ -19,6 +20,7 @@ interface Props {
   onlyAvailable: boolean;
   onOnlyAvailableChange: (v: boolean) => void;
   mode: "explore" | "progress";
+  onClose: () => void;
 }
 
 export default function SearchBar({
@@ -29,14 +31,25 @@ export default function SearchBar({
   onlyAvailable,
   onOnlyAvailableChange,
   mode,
+  onClose,
 }: Props) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
   return (
     <div className="search-bar">
       <input
+        ref={inputRef}
         type="text"
         placeholder="Buscar por código o nombre..."
         value={query}
         onChange={(e) => onQueryChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") onClose();
+        }}
       />
       <select
         value={typeFilter}
@@ -58,6 +71,9 @@ export default function SearchBar({
           Solo lo que puedo tomar ya
         </label>
       )}
+      <button className="search-bar-close" onClick={onClose} aria-label="Cerrar búsqueda">
+        ×
+      </button>
     </div>
   );
 }
