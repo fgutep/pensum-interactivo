@@ -15,11 +15,15 @@ export async function POST(
   const body = (await req.json().catch(() => ({}))) as {
     confirmRemovals?: boolean;
     forceConflicts?: boolean;
+    excludeKeys?: string[];
   };
   try {
     const result = await applyPlanesJob(id, {
       confirmRemovals: !!body.confirmRemovals,
       forceConflicts: !!body.forceConflicts,
+      excludeKeys: Array.isArray(body.excludeKeys)
+        ? body.excludeKeys.map(String)
+        : undefined,
     });
     return NextResponse.json(result);
   } catch (e) {

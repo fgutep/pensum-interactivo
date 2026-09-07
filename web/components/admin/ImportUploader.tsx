@@ -36,7 +36,6 @@ export default function ImportUploader() {
     <form className="admin-card" onSubmit={submit}>
       <h2>Subir PLANES.xlsx</h2>
       <p className="admin-note">
-        La plantilla vigente se genera con <code>npm run export:templates</code>.
         Al subirla se calcula un diff contra la base; nada se aplica hasta que lo
         confirmes.
       </p>

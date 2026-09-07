@@ -7,6 +7,7 @@ const LINKS = [
   { href: "/administrador", label: "Catálogos", exact: true },
   { href: "/administrador/importar", label: "Importar" },
   { href: "/administrador/electivas", label: "Electivas" },
+  { href: "/administrador/descripciones", label: "Descripciones" },
   { href: "/administrador/requisitos", label: "Requisitos de grado" },
   { href: "/administrador/auditoria", label: "Auditoría" },
 ];

@@ -18,6 +18,8 @@ export interface ApplyOptions {
   confirmRemovals?: boolean;
   /** overwrite fields the admin pinned via lockedFields / manuallyEdited */
   forceConflicts?: boolean;
+  /** per-course opt-out: `"<slug>::<courseKey>"` entries are skipped on apply */
+  excludeKeys?: string[];
   actor?: string;
 }
 
@@ -106,6 +108,7 @@ export async function applyPlanesJob(
 
   const parsedCoursesBySlug = parsed.courses;
   const affectedSlugs = new Set(diff.catalogs.map((c) => c.slug));
+  const excluded = new Set(opts.excludeKeys ?? []);
 
   await prisma.$transaction(
     async (tx) => {
@@ -185,6 +188,10 @@ export async function applyPlanesJob(
           kept = 0;
 
         for (const cdiff of cd.courses) {
+          if (excluded.has(`${cd.slug}::${cdiff.key}`)) {
+            kept++;
+            continue;
+          }
           if (cdiff.kind === "added") {
             const pc = parsedByKey.get(cdiff.key);
             if (!pc) continue;

@@ -18,6 +18,24 @@ export default async function ImportarPage() {
         nodos de requisito y requisitos de grado.
       </p>
 
+      <div className="admin-card">
+        <h2>Plantillas admitidas</h2>
+        <p className="admin-note">
+          El importador <strong>solo</strong> acepta estos dos archivos. Se generan
+          con el estado actual de la base — descárgalos, edítalos en Excel y vuelve
+          a subir <code>PLANES.xlsx</code> aquí (las electivas se cargan desde{" "}
+          <em>Electivas</em>).
+        </p>
+        <div className="tpl-downloads">
+          <a className="admin-btn primary" href="/api/admin/templates/planes">
+            ↓ PLANES.xlsx
+          </a>
+          <a className="admin-btn" href="/api/admin/templates/electivas">
+            ↓ ELECTIVAS.xlsx
+          </a>
+        </div>
+      </div>
+
       <ImportUploader />
 
       <h2 style={{ fontSize: 15, margin: "24px 0 10px" }}>Importaciones recientes</h2>

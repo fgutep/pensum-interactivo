@@ -7,6 +7,14 @@ It is a **standalone tool**, deliberately not part of `npm run seed`:
 `Course.description` is admin-owned data, so a scrape (or a later hand edit)
 survives re-seeding.
 
+The admin panel exposes the same capability without the CLI: **Descripciones**
+(coverage + a chunked "Sincronizar faltantes" that calls
+`POST /api/admin/descriptions` 8 codes at a time), and a per-course **"Traer
+descripción del catálogo"** button in the catalog editor
+(`POST /api/admin/courses/<code>/description`). Both reuse
+`lib/scrape/descriptionSync.ts` → `lib/import/smartcatalog.ts`. Use this CLI for a
+full offline pass; the panel is for one-off top-ups.
+
 ## Run
 
 ```bash
