@@ -1,10 +1,11 @@
 # Pensum re-scope — progress log
 
 Re-scope of `Custom_Pensum` from a build-time Vite React SPA into a Next.js full-stack
-app: student panel + `/administrador` admin + SQLite DB + live pairing against the
+app: student panel + `/administrador` admin + Postgres DB + live pairing against the
 Uniandes course API. Full approved design: [`.claude/PLAN.md`](./PLAN.md).
 
-**Key decisions:** Next.js App Router (one container), SQLite-on-volume via Prisma,
+**Key decisions:** Next.js App Router, Postgres via Prisma (Neon in prod on Vercel,
+local docker-compose `db` for dev — switched from SQLite-on-volume, see "Infra" below),
 "see the classes" = link out to Mi-Horario (no timetable UI), `/administrador` gated
 by `ADMIN_PASSWORD` env (no student-UI link), the Excel's 5 sheets = 5 selectable
 catalogs. New app lives in `Custom_Pensum/web/`; old `Custom_Pensum/app/` kept as
@@ -362,6 +363,32 @@ format for the P2 importer (not consumed by the current `seed.ts`).
   `pre-import` snapshots + job `applied`. DB restored afterwards. `npm run build`
   passes.
 
+**Infra — Postgres + Vercel preview (complete, verified locally).**
+- **Provider swap.** `schema.prisma` `provider = "postgresql"` + `directUrl =
+  env("DIRECT_URL")` (pooled URL for the app, direct URL for migrations — needed on
+  Neon/Vercel serverless). Models unchanged. The 7 SQLite migrations are archived
+  verbatim under `web/prisma/_archive_sqlite_migrations/` (outside Prisma's path);
+  `web/prisma/migrations/` now holds one squashed `*_init_postgres` (generated
+  offline via `prisma migrate diff --from-empty --to-schema-datamodel`).
+- **Local dev.** Root `docker-compose.yml` gains a `db` service (`postgres:16`,
+  named volume `pensum-pgdata`, `pensum/pensum/pensum`). `.env.example` / `.env`
+  now carry `DATABASE_URL` + `DIRECT_URL` Postgres strings; `SEED_DIR=".."`.
+- **Vercel.** New `vercel-build` script (`prisma generate && prisma migrate deploy
+  && next build`) so deploys apply migrations. Root dir = `web/` (dashboard
+  setting — no `vercel.json`). `generator client` gains `binaryTargets =
+  ["native","rhel-openssl-3.0.x"]` (Lambda runtime); `package.json` pins
+  `engines.node = "22.x"`. Set
+  `DATABASE_URL` (Neon pooled, `-pooler` host), `DIRECT_URL` (Neon direct),
+  `SESSION_SECRET`, `ADMIN_PASSWORD`, `OFFERINGS_TERM`, `UNIANDES_API_URL`,
+  `PUBLIC_BASE_URL`, `MIHORARIO_URL` in the project env.
+- **Raw SQL.** `scripts/inspect.ts` queries quoted for Postgres (camelCase idents,
+  `isPlaceholder = false`, `SUM(CASE …)`, `::int` casts). `lib/db.ts`
+  `applySqlitePragmas()` already self-guards on a `file:` URL → dormant no-op.
+- Verified locally against `postgres:16`: `migrate deploy` clean, `npm run seed`
+  → same counts as SQLite (iele-cbu3 28 auto / 5 not_offered, 51 electives),
+  `npm run build` passes, `/api/health` `{"ok":true,"db":"up"}`, picker + graph +
+  `/p/iele-cbu3` all 200. **Not yet run against the real Neon DB / deployed.**
+
 ## Next
 
 **P2.2 — direct editors** (DB-authoritative CRUD): catalog identity + `Catalog.rules`
@@ -379,9 +406,10 @@ passthrough + a details-only re-pull.
 **P2.5 — snapshots/rollback + `AuditLog` viewer.**
 
 **P3 — Docker.** Multi-stage `web/Dockerfile` (`output: "standalone"`, non-root,
-`VOLUME /data`, `prisma migrate deploy` on start, healthcheck). Root
-`docker-compose.yml` (web + one-shot `seed` service, named volume). `.dockerignore`.
-Then delete `Custom_Pensum/app/`.
+`prisma migrate deploy` on start, healthcheck). Extend the root `docker-compose.yml`
+(already has `db`) with `web` + a one-shot `seed` service against that `db`.
+`.dockerignore`. Then delete `Custom_Pensum/app/`. (Vercel is the primary deploy
+target now — this is for self-hosting parity.)
 
 ## Gotchas
 
@@ -391,8 +419,14 @@ Then delete `Custom_Pensum/app/`.
   dev server starts 500ing; restart dev after any build.
 - `scripts/*.ts` need `web/.env` — seed/inspect call `process.loadEnvFile()` when
   `DATABASE_URL` is unset; the Next app loads `.env` itself. `.env` is gitignored;
-  for local dev copy `.env.example` and set `DATABASE_URL="file:./dev.db"`
-  (resolves to `web/prisma/dev.db`, also gitignored).
+  for local dev copy `.env.example` (its default `DATABASE_URL`/`DIRECT_URL` point
+  at the docker-compose `db` — `docker compose up -d db` first) or paste the Neon
+  strings.
+- Postgres needs both `DATABASE_URL` (pooled) and `DIRECT_URL` (direct). On Neon
+  they differ by host (`-pooler` vs not); locally they're identical. `prisma
+  migrate` / `db:studio` use `DIRECT_URL`; the running app uses `DATABASE_URL`.
+- Old SQLite migrations live in `web/prisma/_archive_sqlite_migrations/` (reference
+  only — Prisma ignores it). Never re-add them to `web/prisma/migrations/`.
 - Seeding now makes ~2 API calls per offered course (`/api/courses` +
   `/api/courseDetails`); still well under the abort threshold with concurrency 4 +
   the per-run cache. `SEED_SKIP_DETAILS=1` pulls offerings only.
@@ -402,11 +436,11 @@ Then delete `Custom_Pensum/app/`.
   the Excel: `SEED_REBUILD_COURSES=1` (course rows) and/or `SEED_RESET_META=1`
   (rules + identity + requirement nodes + elective integrador flag). A truly
   fresh build = delete `web/prisma/dev.db*` then `npm run seed`.
-- Prisma + SQLite: `Json @default("[]")` emits broken DDL (`DEFAULT []`
-  unquoted → P2023 on read). Use a nullable `Json?` and treat null as `[]` in
-  code instead.
-- `PRAGMA` statements return rows in Prisma+SQLite → use `$queryRawUnsafe`, not
-  `$executeRawUnsafe` (`lib/db.ts` `applySqlitePragmas`).
+- Legacy SQLite note (kept — schema still follows it): `Json @default("[]")` emitted
+  broken DDL on SQLite, so all JSON columns are nullable `Json?` and code treats
+  null as `[]`. Fine to keep on Postgres.
+- `lib/db.ts` `applySqlitePragmas()` no-ops unless `DATABASE_URL` starts with
+  `file:` — dormant on Postgres, left in place for a possible SQLite fallback.
 - The "con Precálculo" sheets have stale `SEM n` column markers (off by one vs the
   "Quinto Semestre" section headers). Parser trusts the section headers; mismatches
   become non-blocking warnings surfaced in the (future) admin validation report.

@@ -28,9 +28,9 @@ This unlocks a re-scope the team wants:
 | Area | Decision |
 |---|---|
 | Stack | **Next.js (App Router) full-stack, TypeScript.** One app: student UI + `/administrador` + API routes + server-side Excel parsing + server-side pairing. Drop the product doc's Python/FastAPI stack. |
-| DB | **SQLite on a mounted Docker volume**, via **Prisma** (so a later Postgres swap is a `provider` change). `DATABASE_URL=file:/data/app.db`. |
+| DB | ~~SQLite on a mounted Docker volume~~ → **Postgres via Prisma** (the planned swap happened — see PROGRESS.md "Infra"). **Neon** for the Vercel preview, local `docker-compose` `db` for dev. `DATABASE_URL` (pooled) + `DIRECT_URL` (direct, for migrations). |
 | "See the classes" | **Link out to Mi-Horario only.** Student panel shows offering *badges* (offered? / #sections / seats / attrs / 8A-8B-16wk) from the pairing, plus a configurable deep link. No sections list, no calendar. |
-| Deployment | Greenfield. Write the Dockerfile + app from scratch, working end-to-end (not production-hardened). |
+| Deployment | **Vercel** (Neon Postgres) is the primary target for the shared preview. Dockerfile + `docker-compose` kept for self-hosting parity (P3). |
 | Admin auth (v1) | Single shared `ADMIN_PASSWORD` + `SESSION_SECRET`-signed httpOnly cookie, enforced by `middleware.ts`. Behind an `AuthProvider` interface so OIDC can replace it later. |
 | Multi-variant | The Excel's 5 sheets → 5 selectable **catalogs**. Student picks one from a menu. `suggestedSemester` is a first-class per-catalog attribute of each course. |
 
@@ -135,6 +135,7 @@ and manual correction. Normalized `requirement`/`requirement_item` tables are de
 requirement builder is actually scoped.
 
 ```prisma
+// NOTE: now `provider = "postgresql"` + `directUrl = env("DIRECT_URL")` — see PROGRESS.md "Infra".
 datasource db { provider = "sqlite"; url = env("DATABASE_URL") }
 generator client { provider = "prisma-client-js" }
 
@@ -269,7 +270,8 @@ model AuditLog {
 }
 ```
 
-SQLite runtime: WAL mode, `PRAGMA busy_timeout=5000`, Prisma `connection_limit=1`.
+~~SQLite runtime: WAL mode, `PRAGMA busy_timeout=5000`, Prisma `connection_limit=1`.~~
+Now Postgres (Neon pooled connection); the pragmas in `lib/db.ts` are a dormant no-op.
 
 ### Read payload — `GET /api/catalogs/:slug` and `buildCatalogPayload(slug)`
 
@@ -433,6 +435,11 @@ Every mutating handler writes an `AuditLog` row.
 
 ## G. Docker & config
 
+> **Superseded for the shared preview:** deploy is Vercel + Neon Postgres now.
+> The root `docker-compose.yml` today runs only a local `db` (Postgres). The
+> Dockerfile / `web` + `seed` compose services below are P3 self-hosting work,
+> now targeting that same Postgres instead of an SQLite volume.
+
 **`web/Dockerfile`** (multi-stage):
 1. `deps` — `node:22-alpine`; `COPY package*.json`; `npm ci`.
 2. `build` — copy source; `npx prisma generate`; `npm run build` (`next.config.mjs` →
@@ -452,7 +459,8 @@ volume `pensum-data:/data`); `seed` service (same image, `profiles:["seed"]`, mo
 
 | Var | Purpose | Example / default |
 |---|---|---|
-| `DATABASE_URL` | SQLite file on the volume | `file:/data/app.db` |
+| `DATABASE_URL` | Postgres, pooled connection (app runtime) | `postgresql://…-pooler.../pensum?sslmode=require` |
+| `DIRECT_URL` | Postgres, direct connection (`prisma migrate`) | `postgresql://….../pensum?sslmode=require` |
 | `SESSION_SECRET` | admin cookie signing key | (random 32B) |
 | `ADMIN_PASSWORD` | single shared admin password | — |
 | `OFFERINGS_TERM` | default pairing term | `202620` |

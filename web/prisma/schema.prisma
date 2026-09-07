@@ -1,13 +1,18 @@
 // Pensum app data model — see /home/felipe/.claude/plans/since-we-can-indeed-structured-gadget.md §B
-// SQLite for the single-container deploy; swap `provider` to "postgresql" later.
+// Postgres: Neon (Vercel preview) in the cloud, a local docker-compose `db` service for dev.
+//   DATABASE_URL — pooled connection (PgBouncer on Neon); used by the app at runtime.
+//   DIRECT_URL   — direct connection; used by `prisma migrate` / introspection only.
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // "native" for local dev; "rhel-openssl-3.0.x" for the Vercel/AWS Lambda runtime.
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 /// A recommended-pensum variant (one Excel sheet). Students pick one of these.

@@ -1,8 +1,9 @@
 # Custom_Pensum
 
 Interactive curriculum ("pensum") app for Uniandes Ingeniería Eléctrica / Electrónica.
-Being re-scoped from a static Vite SPA into a Next.js full-stack app (SQLite DB,
-`/administrador` panel, live pairing against the Uniandes course API).
+Being re-scoped from a static Vite SPA into a Next.js full-stack app (Postgres DB via
+Prisma — Neon in the cloud, local docker-compose for dev — `/administrador` panel,
+live pairing against the Uniandes course API). Deploys to Vercel.
 
 ## Where things stand
 
@@ -22,9 +23,11 @@ what's next (P2 admin, P3 Docker), and the gotchas.
 ## Quick start
 
 ```bash
+docker compose up -d db   # local Postgres (repo root); Neon needs no local container
 cd web
+cp .env.example .env  # then fill in DATABASE_URL / DIRECT_URL (Neon) + secrets
 npm install          # then: npx prisma generate  (postinstall is sandboxed here)
-npm run db:deploy    # apply schema
+npm run db:deploy    # apply migrations
 npm run seed         # first load: DB from the two .xlsx + course API (~60s).
                      # Re-runs are non-destructive (keep admin edits) — force with
                      # SEED_REBUILD_COURSES=1 / SEED_RESET_META=1.

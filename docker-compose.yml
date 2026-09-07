@@ -1,0 +1,27 @@
+# Local dev infra. Today just Postgres (matches the Neon prod DB); the `web` +
+# `seed` services land here in P3 (see .claude/PLAN.md §G).
+#
+#   docker compose up -d db     # start Postgres
+#   cd web && npm run db:deploy # apply migrations
+#   cd web && npm run seed      # load data (~60s, hits the Uniandes API)
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pensum
+      POSTGRES_PASSWORD: pensum
+      POSTGRES_DB: pensum
+    ports:
+      - "5432:5432"
+    volumes:
+      - pensum-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pensum -d pensum"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pensum-pgdata:
