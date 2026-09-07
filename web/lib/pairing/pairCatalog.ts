@@ -8,8 +8,14 @@ import {
   sectionCode,
   type FetchOpts,
 } from "../shared-oferta/fetcher";
-import type { SeccionAPI } from "../shared-oferta/ofertaDeCursosAPI";
+import type {
+  CourseDetailsAPI,
+  SeccionAPI,
+} from "../shared-oferta/ofertaDeCursosAPI";
 import type { PlaceholderKind } from "../import/classifyPlaceholder";
+import { normalizeCode } from "../import/normalizeCode";
+import { parseRequirement } from "../import/requirementParser";
+import type { ReqNode } from "../types";
 import { OfferingsCache } from "./offeringsCache";
 import { suggestForPlaceholder } from "./placeholderHeuristics";
 
@@ -48,11 +54,34 @@ export interface OfferingAggregate {
   syncError: string | null;
 }
 
+/** One normalized corequisite from /api/courseDetails. */
+export interface CoreqDetail {
+  subject: string;
+  coursenumber: string;
+  title: string;
+  normalizedCode: string; // "IELE2002L"
+}
+
+/** Live prereq/coreq/restrictions for a course, from /api/courseDetails. */
+export interface CourseDetailsResult {
+  nrc: string;
+  prereqText: string | null;
+  prereqTree: ReqNode | null;
+  coreq: CoreqDetail[];
+  coreqTree: ReqNode | null;
+  restrictions: { type: string; ind: string; desc: string[] }[];
+  compl: unknown[];
+  master: unknown[];
+  syncError: string | null;
+}
+
 export interface CoursePairResult {
   sortIndex: number;
   normalizedCode: string;
   pairingStatus: PairingStatus;
   offering?: OfferingAggregate;
+  /** present for auto_paired courses when courseDetails was fetched */
+  details?: CourseDetailsResult;
   manual?: { suggestedCode?: string; candidateCodes?: string[] };
 }
 
@@ -106,6 +135,40 @@ function aggregate(code: string, term: string, rows: SeccionAPI[]): OfferingAggr
   };
 }
 
+/** AND of the given course codes as a requirement tree (null when empty). */
+function andTree(codes: string[]): ReqNode | null {
+  const uniq = [...new Set(codes.filter(Boolean))];
+  if (uniq.length === 0) return null;
+  const items: ReqNode[] = uniq.map((code) => ({ op: "COURSE", code }));
+  return items.length === 1 ? items[0] : { op: "AND", items };
+}
+
+/** Shape a raw courseDetails response into what persistCatalog stores. */
+function toDetailsResult(nrc: string, d: CourseDetailsAPI): CourseDetailsResult {
+  const prereqText = (d.prereq[0]?.code ?? "").trim() || null;
+  const coreq: CoreqDetail[] = d.coreq.map((c) => ({
+    subject: String(c.subject ?? "").trim(),
+    coursenumber: String(c.coursenumber ?? "").trim(),
+    title: String(c.title ?? "").trim(),
+    normalizedCode: normalizeCode(`${c.subject ?? ""}${c.coursenumber ?? ""}`),
+  }));
+  return {
+    nrc,
+    prereqText,
+    prereqTree: parseRequirement(prereqText),
+    coreq,
+    coreqTree: andTree(coreq.map((c) => c.normalizedCode)),
+    restrictions: d.restr.map((r) => ({
+      type: String(r.type ?? ""),
+      ind: String(r.ind ?? ""),
+      desc: Array.isArray(r.desc) ? r.desc.map(String) : [],
+    })),
+    compl: d.compl ?? [],
+    master: d.master ?? [],
+    syncError: null,
+  };
+}
+
 /** tiny concurrency limiter */
 function pLimit(concurrency: number) {
   let active = 0;
@@ -135,12 +198,16 @@ export async function pairCatalog(
     programCode?: string;
     /** share a cache across several catalogs in one run (e.g. seeding all 5) */
     cache?: OfferingsCache;
+    /** also pull /api/courseDetails (prereq/coreq/restrictions) per auto-paired
+     * course — the live source of truth for requirements (default true) */
+    fetchDetails?: boolean;
   } = {}
 ): Promise<PairCatalogResult> {
   const concurrency = opts.concurrency ?? Number(process.env.PAIRING_CONCURRENCY ?? 4) ?? 4;
   const limit = pLimit(Math.max(1, concurrency));
   const cache = opts.cache ?? new OfferingsCache();
   const programCode = opts.programCode ?? "IELE";
+  const fetchDetails = opts.fetchDetails !== false;
 
   let fetches = 0;
   let failures = 0;
@@ -173,12 +240,36 @@ export async function pairCatalog(
             [...grouped.values()].flat().filter((s) => sectionCode(s) === c.normalizedCode);
 
           if (rows.length > 0) {
-            results.push({
+            const res: CoursePairResult = {
               sortIndex: c.sortIndex,
               normalizedCode: c.normalizedCode,
               pairingStatus: "auto_paired",
               offering: aggregate(c.normalizedCode, term, rows),
-            });
+            };
+            const rep = rows[0];
+            const nrc = String(rep?.nrc ?? "").trim();
+            const ptrm = String(rep?.ptrm ?? "").trim() || "1";
+            if (fetchDetails && !aborted && nrc) {
+              try {
+                const d = await cache.courseDetails(term, ptrm, nrc, opts.fetchOpts);
+                if (d) res.details = toDetailsResult(nrc, d);
+              } catch (err) {
+                // details are best-effort — the course stays auto_paired, we just
+                // fall back to the Excel-derived requirement trees.
+                res.details = {
+                  nrc,
+                  prereqText: null,
+                  prereqTree: null,
+                  coreq: [],
+                  coreqTree: null,
+                  restrictions: [],
+                  compl: [],
+                  master: [],
+                  syncError: err instanceof Error ? err.message : String(err),
+                };
+              }
+            }
+            results.push(res);
           } else {
             results.push({
               sortIndex: c.sortIndex,

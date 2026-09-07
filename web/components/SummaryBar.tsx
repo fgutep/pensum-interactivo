@@ -18,6 +18,11 @@ interface Props {
   attestationsMet: Set<string>;
   onToggleAttestation: (id: string) => void;
   onReset: () => void;
+  quickMode: boolean;
+  stagedCount: number;
+  onQuickToggle: () => void;
+  onQuickFinish: () => void;
+  onQuickCancel: () => void;
 }
 
 export default function SummaryBar({
@@ -35,6 +40,11 @@ export default function SummaryBar({
   attestationsMet,
   onToggleAttestation,
   onReset,
+  quickMode,
+  stagedCount,
+  onQuickToggle,
+  onQuickFinish,
+  onQuickCancel,
 }: Props) {
   const [reqOpen, setReqOpen] = useState(false);
   const reqRef = useRef<HTMLDivElement>(null);
@@ -82,7 +92,26 @@ export default function SummaryBar({
         </button>
       </div>
 
-      {mode === "progress" && (
+      {mode === "progress" && quickMode && (
+        <div className="quick-select-bar">
+          <span className="quick-select-hint">
+            Marca los cursos que ya viste (aunque no dependan entre sí), luego
+            confirma.
+          </span>
+          <button
+            className="quick-finish"
+            onClick={onQuickFinish}
+            disabled={stagedCount === 0}
+          >
+            Terminar{stagedCount > 0 ? ` (${stagedCount})` : ""}
+          </button>
+          <button className="quick-cancel" onClick={onQuickCancel}>
+            Cancelar
+          </button>
+        </div>
+      )}
+
+      {mode === "progress" && !quickMode && (
         <div className="summary-stats">
           <div className="stat">
             <span className="stat-value">
@@ -127,6 +156,9 @@ export default function SummaryBar({
             </div>
           )}
 
+          <button className="quick-select-button" onClick={onQuickToggle}>
+            Selección rápida
+          </button>
           <button className="share-button" onClick={onShare}>
             {shareFeedback ?? "Copiar enlace de mi avance"}
           </button>

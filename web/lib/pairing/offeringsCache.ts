@@ -2,11 +2,18 @@
 // the same course. Cache lives for the lifetime of one pairing run (seed, or one
 // import-apply / resync request) — callers create a fresh instance each run.
 
-import { fetchSections, groupByCode, type FetchOpts } from "../shared-oferta/fetcher";
-import type { SeccionAPI } from "../shared-oferta/ofertaDeCursosAPI";
+import {
+  fetchCourseDetails,
+  fetchSections,
+  groupByCode,
+  urlCourseDetails,
+  type FetchOpts,
+} from "../shared-oferta/fetcher";
+import type { CourseDetailsAPI, SeccionAPI } from "../shared-oferta/ofertaDeCursosAPI";
 
 export class OfferingsCache {
   private byUrl = new Map<string, Promise<SeccionAPI[]>>();
+  private detailsByKey = new Map<string, Promise<CourseDetailsAPI | null>>();
 
   /** fetch (once) and cache the raw section list for a URL */
   fetch(url: string, opts?: FetchOpts): Promise<SeccionAPI[]> {
@@ -21,5 +28,21 @@ export class OfferingsCache {
   /** fetch a URL and return rows grouped by `class+course` */
   async fetchGrouped(url: string, opts?: FetchOpts): Promise<Map<string, SeccionAPI[]>> {
     return groupByCode(await this.fetch(url, opts));
+  }
+
+  /** fetch (once per term+nrc) the courseDetails for one section */
+  courseDetails(
+    term: string,
+    ptrm: string,
+    nrc: string | number,
+    opts?: FetchOpts
+  ): Promise<CourseDetailsAPI | null> {
+    const key = `${term}:${nrc}`;
+    let p = this.detailsByKey.get(key);
+    if (!p) {
+      p = fetchCourseDetails(urlCourseDetails(term, ptrm, nrc), opts);
+      this.detailsByKey.set(key, p);
+    }
+    return p;
   }
 }

@@ -13,39 +13,63 @@
 
 import type { CatalogRules } from "./types";
 
+// The English-reading requirement is now a node in the graph (see
+// catalogPayload.ts) that courses reference as a normal prerequisite, so it no
+// longer needs `autoGatePrereqRegex` — the node does the blocking. The field is
+// still supported by evaluateGates() for any future non-course attestation.
 const LANGUAGE_ATTESTATION = {
   id: "idioma",
-  label: "Requisito de inglés cumplido",
+  label: "Requisito de lectura en inglés",
   description:
-    "Suficiencia por examen de clasificación (LENG / ENGL / RLEC) o exención registrada en el Registro Académico.",
-  autoGatePrereqRegex: "^(LENG|ENGL|RLEC|IDIO)",
+    "Suficiencia por examen de clasificación (LENG / ENGL / RLEC) o exención " +
+    "registrada en el Registro Académico. Ver el nodo “Requisito de lectura en " +
+    "inglés” en el mapa.",
 };
 
-/** Common baseline for the CBU3 plans. */
-function cbu3Rules(programPrefixes: string[]): CatalogRules {
-  const p = `(${programPrefixes.join("|")})`;
+// Two distinct graduation requirements — NOT the same thing.
+const INTERNACIONALIZACION_ATTESTATION = {
+  id: "internacionalizacion",
+  label: "Requisito de internacionalización",
+  description:
+    "Experiencia internacional exigida para grado (intercambio, curso o " +
+    "actividad internacional, o su equivalencia aprobada).",
+};
+
+const SABERPRO_ATTESTATION = {
+  id: "saberpro",
+  label: "Saber Pro",
+  description:
+    "Haber presentado el Examen de Estado Saber Pro (requisito nacional de grado).",
+};
+
+/** Common baseline for the CBU3 plans.
+ *
+ * Only the language attestation for now: its `autoGatePrereqRegex` locks any
+ * course whose prereq tree references a language code (LENG/ENGL/RLEC/IDIO)
+ * until the student ticks "Requisito de inglés cumplido". The reason surfaces
+ * only when such a course is selected (SidePanel "Reglas del plan por cumplir"),
+ * not as a permanent legend entry.
+ *
+ * `gates` (generic GateRule engine — min credits, semester caps, "todo nivel 2
+ * antes de nivel 3", …) stays wired but empty until the coordinators define real
+ * rules. The earlier `fundamentos-nivel-2` demo gate was removed. */
+function cbu3Rules(): CatalogRules {
   return {
-    attestations: [LANGUAGE_ATTESTATION],
-    gates: [
-      {
-        id: "fundamentos-nivel-2",
-        label:
-          "Haber aprobado todos los cursos de nivel 2 del programa (código " +
-          programPrefixes.join(" / ") +
-          " 2xxx) antes de inscribir cursos de nivel 3.",
-        appliesTo: { codeRegex: `^${p}3\\d{3}$` },
-        condition: { allApprovedMatching: `^${p}2\\d{3}$` },
-      },
+    attestations: [
+      LANGUAGE_ATTESTATION,
+      INTERNACIONALIZACION_ATTESTATION,
+      SABERPRO_ATTESTATION,
     ],
+    gates: [],
   };
 }
 
 export const CATALOG_RULES: Record<string, CatalogRules> = {
-  "iele-cbu3": cbu3Rules(["IELE"]),
-  "iele-cbu3-pc": cbu3Rules(["IELE"]),
-  "ielc-cbu3": cbu3Rules(["IELE", "IELC"]),
-  "ielc-cbu3-pc": cbu3Rules(["IELE", "IELC"]),
-  "doble-cbu3": cbu3Rules(["IELE", "IELC"]),
+  "iele-cbu3": cbu3Rules(),
+  "iele-cbu3-pc": cbu3Rules(),
+  "ielc-cbu3": cbu3Rules(),
+  "ielc-cbu3-pc": cbu3Rules(),
+  "doble-cbu3": cbu3Rules(),
 };
 
 export function rulesForSlug(slug: string): CatalogRules {

@@ -39,3 +39,43 @@ export interface SeccionAPI {
   ptrm: string;
   term: string;
 }
+
+// ---- /api/courseDetails?term=&ptrm=&nrc= — per-section prereq/coreq/restrictions.
+// The `courses` endpoint carries none of this; `courseDetails` (keyed by NRC) does.
+// Every field arrives as a string, and the arrays are frequently empty.
+
+/** A prerequisite expression. `code` is the Spanish boolean grammar our
+ * requirementParser already handles; `descr` mirrors it with course names. */
+export interface PrereqDetailAPI {
+  code: string;
+  descr?: string;
+}
+
+/** A corequisite — a course that must be taken the same term (or earlier). */
+export interface CoreqDetailAPI {
+  subject: string; // "IELE"
+  coursenumber: string; // "2002L"
+  title: string; // "LAB. TEORÍA ELECTROMAGNÉTICA"
+}
+
+/** An enrollment restriction (level / program / classification). Informational
+ * only — never blocks a course in this app. */
+export interface RestrictionDetailAPI {
+  type: string; // "NIVEL"
+  ind: string; // "INCLUYE(SOLO)" | "EXCLUYE" | ...
+  desc: string[]; // ["PREGRADO"]
+}
+
+export interface CourseDetailsAPI {
+  nrc: string;
+  term: string;
+  ptrm: string;
+  class: string;
+  course: string;
+  compl: unknown[];
+  master: unknown[];
+  restr: RestrictionDetailAPI[];
+  coreq: CoreqDetailAPI[];
+  prereq: PrereqDetailAPI[];
+  programsmaxenrol: unknown[];
+}

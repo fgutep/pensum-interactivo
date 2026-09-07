@@ -11,7 +11,19 @@ import type {
   ElectiveDTO,
   OfferingBadge,
   ReqNode,
+  RequirementNodeDTO,
+  RequirementSource,
+  Restriction,
 } from "./types";
+
+function safeRe(src: string | null | undefined): RegExp | null {
+  if (!src) return null;
+  try {
+    return new RegExp(src);
+  } catch {
+    return null;
+  }
+}
 import { collectCourseCodes } from "./import/requirementParser";
 import { normalizeCode } from "./import/normalizeCode";
 
@@ -29,6 +41,7 @@ export async function buildCatalogPayload(slug: string): Promise<CatalogPayload 
           course: { include: { offerings: true } },
         },
       },
+      requirementNodes: { orderBy: [{ semester: "asc" }, { sortIndex: "asc" }] },
     },
   });
   if (!catalog) return null;
@@ -55,7 +68,47 @@ export async function buildCatalogPayload(slug: string): Promise<CatalogPayload 
   const idByCode = new Map(rows.map((r) => [r.codeNormalized, r.id]));
 
   const courses: Course[] = rows.map(({ cc, id, codeNormalized }) => {
-    const prereqTree = (cc.prereqTree as ReqNode | null) ?? null;
+    // Live courseDetails (this term) is the source of truth for requirements;
+    // the PRERREQUISITOS spreadsheet is the fallback for courses with no
+    // offering this term (or when the details fetch failed).
+    const off = cc.course?.offerings?.find((o) => o.term === catalog.term);
+    const detailsFetched = !!off?.detailsSyncedAt && !off?.detailsError;
+
+    const apiPrereqTree = (off?.apiPrereqTree as ReqNode | null | undefined) ?? null;
+    const docPrereqTree = (cc.prereqTree as ReqNode | null) ?? null;
+    const prereqTree =
+      apiPrereqTree ??
+      (detailsFetched && !off?.apiPrereqText ? null : docPrereqTree);
+    const prereqSource: RequirementSource = apiPrereqTree
+      ? "api"
+      : detailsFetched && !off?.apiPrereqText
+        ? "api"
+        : docPrereqTree
+          ? "document"
+          : null;
+    const prereqText = apiPrereqTree
+      ? (off?.apiPrereqText ?? "")
+      : (cc.prereqText ?? "");
+
+    const apiCoreqTree = (off?.apiCoreqTree as ReqNode | null | undefined) ?? null;
+    const docCoreqTree = (cc.coreqTree as ReqNode | null) ?? null;
+    const coreqTree = apiCoreqTree ?? (detailsFetched ? null : docCoreqTree);
+    const coreqSource: RequirementSource = apiCoreqTree
+      ? "api"
+      : detailsFetched
+        ? "api"
+        : docCoreqTree
+          ? "document"
+          : null;
+
+    const apiCoreq =
+      (off?.apiCoreq as { normalizedCode: string; title: string }[] | null) ?? [];
+    const coreqTitles: Record<string, string> = {};
+    for (const c of apiCoreq) {
+      if (c?.normalizedCode) coreqTitles[c.normalizedCode] = c.title ?? "";
+    }
+    const restrictions = (off?.restrictions as Restriction[] | null) ?? [];
+
     const allPrereq = [...collectCourseCodes(prereqTree)];
     const prereqCourseIds = allPrereq
       .filter((c) => catalogCodes.has(c))
@@ -63,7 +116,6 @@ export async function buildCatalogPayload(slug: string): Promise<CatalogPayload 
       .filter(Boolean);
     const prereqExternal = allPrereq.filter((c) => !catalogCodes.has(c));
 
-    const coreqTree = (cc.coreqTree as ReqNode | null) ?? null;
     const allCoreq = [...collectCourseCodes(coreqTree)];
     const coreqCourseIds = allCoreq
       .filter((c) => catalogCodes.has(c))
@@ -82,7 +134,8 @@ export async function buildCatalogPayload(slug: string): Promise<CatalogPayload 
       isPlaceholder: cc.isPlaceholder,
       placeholderKind: cc.placeholderKind,
       placeholderLabel: cc.placeholderLabel,
-      prereqText: cc.prereqText ?? "",
+      description: cc.course?.description ?? null,
+      prereqText,
       coreqText: cc.coreqText ?? "",
       prereqTree,
       prereqCourseIds,
@@ -90,8 +143,71 @@ export async function buildCatalogPayload(slug: string): Promise<CatalogPayload 
       coreqTree,
       coreqCourseIds,
       coreqExternal,
+      prereqSource,
+      coreqSource,
+      coreqTitles,
+      restrictions,
     };
   });
+
+  // --- non-course graduation requirements (RequirementNode rows, DB-editable):
+  //     each becomes a 0-credit node; courses point at it either by explicit
+  //     linkedCourseCodes or by autoLinkRegex matching an external prereq code ---
+  const requirementNodes: RequirementNodeDTO[] = [];
+  for (const rn of catalog.requirementNodes) {
+    const linked = new Set(
+      ((rn.linkedCourseCodes as string[] | null) ?? []).map(String)
+    );
+    const re = safeRe(rn.autoLinkRegex);
+    for (const c of courses) {
+      let attach = linked.has(c.codeNormalized);
+      if (re && c.prereqExternal.some((code) => re.test(code))) {
+        attach = true;
+        c.prereqExternal = c.prereqExternal.filter((code) => !re.test(code));
+      }
+      if (attach && !c.prereqCourseIds.includes(rn.key)) {
+        c.prereqCourseIds = [...c.prereqCourseIds, rn.key];
+      }
+    }
+    courses.push({
+      id: rn.key,
+      code: "REQUISITO",
+      codeNormalized: rn.key,
+      name: rn.label,
+      credits: rn.credits,
+      semester: rn.semester,
+      type: "complementaria",
+      isPlaceholder: true,
+      placeholderKind: "REQING",
+      placeholderLabel: rn.label,
+      prereqText: "",
+      coreqText: "",
+      prereqTree: null,
+      prereqCourseIds: [],
+      prereqExternal: [],
+      coreqTree: null,
+      coreqCourseIds: [],
+      coreqExternal: [],
+      prereqSource: null,
+      coreqSource: null,
+      coreqTitles: {},
+      restrictions: [],
+      requirementAttestationId: rn.attestationId,
+      requirementInfoUrl: rn.infoUrl,
+      requirementDescription: rn.description,
+    });
+    requirementNodes.push({
+      key: rn.key,
+      label: rn.label,
+      description: rn.description,
+      infoUrl: rn.infoUrl,
+      credits: rn.credits,
+      semester: rn.semester,
+      sortIndex: rn.sortIndex,
+      attestationId: rn.attestationId,
+      linkedCourseCodes: [...linked],
+    });
+  }
 
   // offerings for this catalog's term, keyed by codeNormalized
   const offerings: Record<string, OfferingBadge> = {};
@@ -125,6 +241,7 @@ export async function buildCatalogPayload(slug: string): Promise<CatalogPayload 
     level: e.level as ElectiveDTO["level"],
     ciclo: e.ciclo,
     roles: e.roles as unknown as ElectiveDTO["roles"],
+    isCursoIntegrador: !!e.isCursoIntegrador,
     offeredTerms: (e.offeredTerms as unknown as string[] | null) ?? [],
   }));
 
@@ -155,5 +272,6 @@ export async function buildCatalogPayload(slug: string): Promise<CatalogPayload 
       gates: [],
       attestations: [],
     }) as CatalogRules,
+    requirementNodes,
   };
 }

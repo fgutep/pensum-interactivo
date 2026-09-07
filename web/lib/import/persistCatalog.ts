@@ -2,7 +2,7 @@
 // Used by scripts/seed.ts and by lib/import/apply.ts (the latter wraps this in a
 // snapshot + import-job transaction).
 
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import type { ParsedCatalog, ParsedCourse } from "./parsePensumWorkbook";
 import type { PrereqRow } from "./parsePrereqExport";
@@ -16,6 +16,8 @@ export interface PersistOptions {
   sourceFilename?: string;
   /** run live API pairing after writing courses (default true) */
   pair?: boolean;
+  /** also pull /api/courseDetails per auto-paired course (default true) */
+  fetchDetails?: boolean;
   concurrency?: number;
   /** share an offerings cache across several persist calls in one run */
   cache?: OfferingsCache;
@@ -28,6 +30,25 @@ export interface PersistOptions {
   };
   /** admin progression rules ({ gates, attestations }) written onto Catalog.rules */
   rules?: unknown;
+  /** first-load requirement nodes (RequirementNode rows) */
+  requirementNodes?: {
+    key: string;
+    label: string;
+    description?: string;
+    infoUrl?: string;
+    credits: number;
+    semester: number;
+    sortIndex: number;
+    attestationId?: string;
+    linkedCourseCodes: string[];
+    autoLinkRegex?: string;
+  }[];
+  /** overwrite Catalog.rules / identity / requirement nodes even when the row
+   * already exists (a plain re-seed leaves admin edits alone) */
+  resetMeta?: boolean;
+  /** delete + recreate CatalogCourse rows from the parsed Excel even when the
+   * catalog already has courses (default: only rebuild on first load) */
+  rebuildCourses?: boolean;
 }
 
 export interface PersistResult {
@@ -42,7 +63,11 @@ export interface PersistResult {
     sync_failed: number;
     manual_resolved: number;
   };
+  /** auto-paired courses for which courseDetails (prereq/coreq) was pulled OK */
+  detailsPaired: number;
   apiFailureRate: number;
+  /** whether CatalogCourse rows were rebuilt from Excel this run */
+  rebuilt: boolean;
 }
 
 function toInputJson(v: unknown): Prisma.InputJsonValue | typeof Prisma.JsonNull {
@@ -56,6 +81,17 @@ export async function persistParsedCatalog(
 ): Promise<PersistResult> {
   const status = opts.status ?? "draft";
   const identity = opts.identity ?? {};
+
+  const existing = await prisma.catalog.findUnique({
+    where: { slug: parsed.slug },
+    select: { id: true, _count: { select: { courses: true } } },
+  });
+  const isNew = !existing;
+  // rules / identity / requirement nodes are admin-owned once the catalog exists —
+  // a plain re-seed only re-applies them on first load or with SEED_RESET_META=1.
+  const writeMeta = isNew || !!opts.resetMeta;
+  const rebuildCourses =
+    isNew || (existing?._count.courses ?? 0) === 0 || !!opts.rebuildCourses;
 
   // 1. upsert the Catalog row
   const catalog = await prisma.catalog.upsert({
@@ -81,15 +117,46 @@ export async function persistParsedCatalog(
       status,
       term: opts.term,
       sourceFilename: opts.sourceFilename,
-      ...(identity.accentColor !== undefined ? { accentColor: identity.accentColor } : {}),
-      ...(identity.tagline !== undefined ? { tagline: identity.tagline } : {}),
-      ...(identity.subtitle !== undefined ? { subtitle: identity.subtitle } : {}),
-      ...(identity.imagePath !== undefined ? { imagePath: identity.imagePath } : {}),
-      ...(opts.rules !== undefined
+      ...(writeMeta && identity.accentColor !== undefined ? { accentColor: identity.accentColor } : {}),
+      ...(writeMeta && identity.tagline !== undefined ? { tagline: identity.tagline } : {}),
+      ...(writeMeta && identity.subtitle !== undefined ? { subtitle: identity.subtitle } : {}),
+      ...(writeMeta && identity.imagePath !== undefined ? { imagePath: identity.imagePath } : {}),
+      ...(writeMeta && opts.rules !== undefined
         ? { rules: opts.rules as Prisma.InputJsonValue }
         : {}),
     },
   });
+
+  // 1b. requirement nodes — create-only (never overwrite an admin's edits)
+  for (const rn of opts.requirementNodes ?? []) {
+    await prisma.requirementNode.upsert({
+      where: { catalogId_key: { catalogId: catalog.id, key: rn.key } },
+      create: {
+        catalogId: catalog.id,
+        key: rn.key,
+        label: rn.label,
+        description: rn.description ?? null,
+        infoUrl: rn.infoUrl ?? null,
+        credits: rn.credits,
+        semester: rn.semester,
+        sortIndex: rn.sortIndex,
+        attestationId: rn.attestationId ?? null,
+        linkedCourseCodes: rn.linkedCourseCodes as unknown as Prisma.InputJsonValue,
+        autoLinkRegex: rn.autoLinkRegex ?? null,
+      },
+      update: opts.resetMeta
+        ? {
+            label: rn.label,
+            description: rn.description ?? null,
+            infoUrl: rn.infoUrl ?? null,
+            credits: rn.credits,
+            semester: rn.semester,
+            attestationId: rn.attestationId ?? null,
+            autoLinkRegex: rn.autoLinkRegex ?? null,
+          }
+        : {},
+    });
+  }
 
   // 2. upsert global Course rows for every real (non-placeholder) code
   const realCourses = parsed.courses.filter((c) => !c.isPlaceholder && c.normalizedCode);
@@ -111,9 +178,9 @@ export async function persistParsedCatalog(
     courseIdByCode.set(c.normalizedCode, row.id);
   }
 
-  // 3. replace the catalog's CatalogCourse rows
-  await prisma.catalogCourse.deleteMany({ where: { catalogId: catalog.id } });
-
+  // 3. (re)build the catalog's CatalogCourse rows from the Excel — only on first
+  //    load or when explicitly asked. Otherwise the DB rows (incl. admin edits)
+  //    are left as-is and we just refresh pairing/offering data below.
   const makeCatalogCourseData = (c: ParsedCourse): Prisma.CatalogCourseCreateManyInput => {
     const pr = c.isPlaceholder ? undefined : prereqMap.get(c.normalizedCode);
     const prereqText = pr?.prereqText ?? "";
@@ -142,9 +209,12 @@ export async function persistParsedCatalog(
     };
   };
 
-  await prisma.catalogCourse.createMany({
-    data: parsed.courses.map(makeCatalogCourseData),
-  });
+  if (rebuildCourses) {
+    await prisma.catalogCourse.deleteMany({ where: { catalogId: catalog.id } });
+    await prisma.catalogCourse.createMany({
+      data: parsed.courses.map(makeCatalogCourseData),
+    });
+  }
 
   const catalogCourses = await prisma.catalogCourse.findMany({
     where: { catalogId: catalog.id },
@@ -161,6 +231,7 @@ export async function persistParsedCatalog(
     manual_resolved: 0,
   };
   let apiFailureRate = 0;
+  let detailsPaired = 0;
 
   // 4. pairing
   if (opts.pair !== false) {
@@ -181,6 +252,7 @@ export async function persistParsedCatalog(
       concurrency: opts.concurrency,
       programCode: parsed.programCode,
       cache: opts.cache,
+      fetchDetails: opts.fetchDetails,
     });
     apiFailureRate = result.apiFailureRate;
 
@@ -189,15 +261,18 @@ export async function persistParsedCatalog(
       if (!cc) continue;
       await applyPairResult(r, cc, opts.term, courseIdByCode);
       counts[r.pairingStatus] = (counts[r.pairingStatus] ?? 0) + 1;
+      if (r.details && !r.details.syncError) detailsPaired += 1;
     }
   }
 
   return {
     slug: parsed.slug,
     catalogId: catalog.id,
-    courseCount: parsed.courses.length,
+    courseCount: catalogCourses.length,
     pairing: counts,
+    detailsPaired,
     apiFailureRate,
+    rebuilt: rebuildCourses,
   };
 }
 
@@ -216,6 +291,40 @@ async function applyPairResult(
   const courseId = cc.courseId ?? courseIdByCode.get(r.normalizedCode) ?? null;
   if (r.offering && courseId != null) {
     const o = r.offering;
+    const d = r.details;
+    // Only touch the details columns when a details fetch actually ran, so a
+    // details-less resync doesn't wipe a previous good pull. When it did run,
+    // an absent tree is written as JSON null so a stale value is cleared.
+    const j = (v: unknown) =>
+      v == null ? Prisma.JsonNull : (v as Prisma.InputJsonValue);
+    // Just the courseDetails columns — no `courseId`, so it spreads cleanly into
+    // both the create and update bodies of the upsert.
+    type DetailCols = {
+      detailsNrc: string | null;
+      apiPrereqText: string | null;
+      apiPrereqTree: Prisma.InputJsonValue | typeof Prisma.JsonNull;
+      apiCoreq: Prisma.InputJsonValue | typeof Prisma.JsonNull;
+      apiCoreqTree: Prisma.InputJsonValue | typeof Prisma.JsonNull;
+      restrictions: Prisma.InputJsonValue | typeof Prisma.JsonNull;
+      detailsCompl: Prisma.InputJsonValue | typeof Prisma.JsonNull;
+      detailsMaster: Prisma.InputJsonValue | typeof Prisma.JsonNull;
+      detailsError: string | null;
+      detailsSyncedAt: Date;
+    };
+    const detailsFields: Partial<DetailCols> = d
+      ? {
+          detailsNrc: d.nrc || null,
+          apiPrereqText: d.prereqText,
+          apiPrereqTree: j(d.prereqTree),
+          apiCoreq: j(d.coreq),
+          apiCoreqTree: j(d.coreqTree),
+          restrictions: j(d.restrictions),
+          detailsCompl: j(d.compl),
+          detailsMaster: j(d.master),
+          detailsError: d.syncError,
+          detailsSyncedAt: new Date(),
+        }
+      : {};
     await prisma.courseOffering.upsert({
       where: { courseId_term: { courseId, term } },
       create: {
@@ -230,6 +339,7 @@ async function applyPairResult(
         attrs: o.attrs as unknown as Prisma.InputJsonValue,
         ptrmSet: o.ptrmSet as unknown as Prisma.InputJsonValue,
         syncError: o.syncError,
+        ...detailsFields,
       },
       update: {
         offered: o.offered,
@@ -242,6 +352,7 @@ async function applyPairResult(
         ptrmSet: o.ptrmSet as unknown as Prisma.InputJsonValue,
         syncError: o.syncError,
         lastSyncedAt: new Date(),
+        ...detailsFields,
       },
     });
   }

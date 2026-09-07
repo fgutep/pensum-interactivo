@@ -21,6 +21,7 @@ import { persistParsedCatalog } from "../lib/import/persistCatalog";
 import { parseElectivesWorkbook } from "../lib/import/parseElectivesWorkbook";
 import { identityForSlug } from "../lib/catalogIdentity";
 import { rulesForSlug } from "../lib/catalogRules";
+import { requirementNodesForSlug } from "../lib/requirementNodes";
 import { OfferingsCache } from "../lib/pairing/offeringsCache";
 import { prisma, applySqlitePragmas } from "../lib/db";
 
@@ -34,13 +35,32 @@ async function main() {
   const seedDir = resolve(process.cwd(), process.env.SEED_DIR ?? "..");
   const term = process.env.OFFERINGS_TERM ?? "202620";
   const pair = process.env.SEED_SKIP_PAIRING !== "1";
+  const fetchDetails = pair && process.env.SEED_SKIP_DETAILS !== "1";
+  // A plain re-seed is now non-destructive: it will NOT overwrite Catalog.rules /
+  // identity / requirement nodes, nor rebuild CatalogCourse rows, once a catalog
+  // exists. Force with these when you really mean to re-derive from the Excel.
+  const resetMeta = process.env.SEED_RESET_META === "1";
+  const rebuildCourses = process.env.SEED_REBUILD_COURSES === "1";
 
   const pensumPath = findFile(seedDir, /^PENSUMS.*\.xlsx$/i);
   const prereqPath = findFile(seedDir, /^PRERREQUISITOS.*\.xlsx$/i);
   console.log(`seed dir : ${seedDir}`);
   console.log(`pensum   : ${pensumPath}`);
   console.log(`prereqs  : ${prereqPath}`);
-  console.log(`term     : ${term}   pairing: ${pair ? "on" : "off"}`);
+  console.log(
+    `term     : ${term}   pairing: ${pair ? "on" : "off"}   courseDetails: ${
+      fetchDetails ? "on" : "off"
+    }`
+  );
+  console.log(
+    `mode     : ${
+      resetMeta || rebuildCourses
+        ? `re-derive from Excel (${[resetMeta && "meta", rebuildCourses && "courses"]
+            .filter(Boolean)
+            .join("+")})`
+        : "bootstrap only (existing catalogs left untouched)"
+    }`
+  );
 
   await applySqlitePragmas();
 
@@ -61,6 +81,7 @@ async function main() {
       term,
       sourceFilename: pensumPath.split("/").pop(),
       pair,
+      fetchDetails,
       cache,
       identity: {
         accentColor: id.accentColor,
@@ -69,12 +90,16 @@ async function main() {
         subtitle: maxSemester ? `CBU3 · ${maxSemester} semestres` : "CBU3",
       },
       rules: rulesForSlug(parsed.slug),
+      requirementNodes: requirementNodesForSlug(parsed.slug),
+      resetMeta,
+      rebuildCourses,
     });
     console.log(
-      `  ✓ ${res.slug.padEnd(14)} ${String(res.courseCount).padStart(3)} courses  ` +
+      `  ✓ ${res.slug.padEnd(14)} ${String(res.courseCount).padStart(3)} courses` +
+        `${res.rebuilt ? "" : " (kept)"}  ` +
         `auto=${res.pairing.auto_paired} not_offered=${res.pairing.not_offered} ` +
         `manual=${res.pairing.needs_manual} pool=${res.pairing.placeholder_pool} ` +
-        `sync_failed=${res.pairing.sync_failed}` +
+        `sync_failed=${res.pairing.sync_failed} details=${res.detailsPaired}` +
         (res.apiFailureRate > 0 ? `  (api fail ${(res.apiFailureRate * 100).toFixed(0)}%)` : "")
     );
   }
@@ -106,6 +131,7 @@ async function main() {
           level: e.level,
           ciclo: e.ciclo,
           roles: e.roles as object,
+          isCursoIntegrador: e.isCursoIntegrador,
           offeredTerms: e.offeredTerms,
           sourceFiles: e.sourceFiles,
         },
@@ -114,6 +140,9 @@ async function main() {
           level: e.level,
           ciclo: e.ciclo,
           roles: e.roles as object,
+          // the integrador flag is admin-editable — Excel only sets it on first
+          // insert (or with SEED_RESET_META=1)
+          ...(resetMeta ? { isCursoIntegrador: e.isCursoIntegrador } : {}),
           offeredTerms: e.offeredTerms,
           sourceFiles: e.sourceFiles,
         },

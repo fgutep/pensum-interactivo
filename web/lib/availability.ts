@@ -3,6 +3,7 @@ import type {
   CatalogRules,
   Course,
   ReqNode,
+  UnlockRelation,
 } from "./types";
 import { collectCourseCodes } from "./import/requirementParser";
 
@@ -74,6 +75,30 @@ export function missingCodes(
     if (!best || m.size < best.size) best = m;
   }
   return best ?? new Set();
+}
+
+/** Relationship of a *selected* course to a course it helps unlock — see
+ *  `UnlockRelation` in ./types. "sole" when approving only the selected course
+ *  clears the dependent's prerequisites; "among" for a partial contribution. */
+export function unlockRelation(
+  dependent: Course,
+  selectedCode: string,
+  catalogCodes: Set<string>
+): UnlockRelation {
+  if (!dependent.prereqTree) return null;
+  const codes = collectCourseCodes(dependent.prereqTree);
+  if (!codes.has(selectedCode)) return null;
+  // Would approving *only* the selected course clear the dependent's prereqs?
+  if (satisfied(dependent.prereqTree, new Set([selectedCode]), catalogCodes)) {
+    return "sole";
+  }
+  // Otherwise it's a genuine partial contribution.
+  const stillMissing = missingCodes(
+    dependent.prereqTree,
+    new Set([selectedCode]),
+    catalogCodes
+  );
+  return stillMissing.size === 0 ? "sole" : "among";
 }
 
 export interface CourseAvailability {

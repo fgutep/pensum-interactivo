@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import type {
   AvailabilityStatus,
@@ -34,6 +34,7 @@ import SidePanel from "./SidePanel";
 import SummaryBar from "./SummaryBar";
 import SearchBar from "./SearchBar";
 import PlanSwitcher from "./PlanSwitcher";
+import GradoChecklist from "./GradoChecklist";
 
 interface Props {
   data: CatalogPayload;
@@ -50,6 +51,11 @@ export default function PensumExplorer({ data, mihorarioUrl }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [quickMode, setQuickMode] = useState(false);
+  const [gradoOpen, setGradoOpen] = useState(false);
+  const [staged, setStaged] = useState<Set<string>>(new Set());
+  const [justUnlocked, setJustUnlocked] = useState<Set<string>>(new Set());
+  const unlockTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [approved, setApproved] = useState<Set<string>>(new Set());
   const [assignments, setAssignments] = useState<ElectiveAssignments>({});
   const [attestationsMet, setAttestationsMet] = useState<Set<string>>(new Set());
@@ -99,9 +105,20 @@ export default function PensumExplorer({ data, mihorarioUrl }: Props) {
     [courses, selectedId]
   );
 
+  // A RequirementNode-backed slot (e.g. the English-reading requirement) counts
+  // as "approved" once its linked attestation is ticked — it is not a real
+  // course you mark. Which attestation comes from the DB row (payload).
+  const effectiveApproved = useMemo(() => {
+    const extra = courses.filter(
+      (c) => c.requirementAttestationId && attestationsMet.has(c.requirementAttestationId)
+    );
+    if (extra.length === 0) return approved;
+    return new Set([...approved, ...extra.map((c) => c.id)]);
+  }, [approved, attestationsMet, courses]);
+
   const { done: creditsDone, total: creditsTotal } = useMemo(
-    () => creditsSummary(courses, approved),
-    [courses, approved]
+    () => creditsSummary(courses, effectiveApproved),
+    [courses, effectiveApproved]
   );
 
   const ruleCtx = useMemo(
@@ -115,12 +132,18 @@ export default function PensumExplorer({ data, mihorarioUrl }: Props) {
     const lockedIds = new Set<string>();
     if (mode !== "progress") return { statusById, lockedIds };
     for (const c of courses) {
-      const a = courseAvailability(c, approved, catalogCodes, courses, ruleCtx);
+      const a = courseAvailability(
+        c,
+        effectiveApproved,
+        catalogCodes,
+        courses,
+        ruleCtx
+      );
       statusById.set(c.id, a.status);
       if (a.gateReasons.length > 0) lockedIds.add(c.id);
     }
     return { statusById, lockedIds };
-  }, [courses, approved, mode, catalogCodes, ruleCtx]);
+  }, [courses, effectiveApproved, mode, catalogCodes, ruleCtx]);
 
   const matchedIds = useMemo(() => {
     const hasQuery = query.trim().length > 0;
@@ -150,12 +173,12 @@ export default function PensumExplorer({ data, mihorarioUrl }: Props) {
     if (!selectedCourse) return null;
     return courseAvailability(
       selectedCourse,
-      approved,
+      effectiveApproved,
       catalogCodes,
       courses,
       ruleCtx
     );
-  }, [selectedCourse, approved, catalogCodes, courses, ruleCtx]);
+  }, [selectedCourse, effectiveApproved, catalogCodes, courses, ruleCtx]);
 
   const dependentsCount = useMemo(() => {
     if (!selectedCourse) return 0;
@@ -163,17 +186,88 @@ export default function PensumExplorer({ data, mihorarioUrl }: Props) {
   }, [courses, selectedCourse]);
 
   const criticalPath = useMemo(
-    () => criticalPathLength(courses, approved),
-    [courses, approved]
+    () => criticalPathLength(courses, effectiveApproved),
+    [courses, effectiveApproved]
   );
 
-  const handleSelect = useCallback((id: string) => {
-    if (id === "") {
+  const handleSelect = useCallback(
+    (id: string) => {
+      if (id === "") {
+        if (!quickMode) setSelectedId(null);
+        return;
+      }
+      if (quickMode) {
+        // stage / unstage — skip placeholders and already-approved courses
+        const c = data.courses.find((x) => x.id === id);
+        if (!c || c.isPlaceholder || approved.has(id)) return;
+        setStaged((prev) => {
+          const next = new Set(prev);
+          if (next.has(id)) next.delete(id);
+          else next.add(id);
+          return next;
+        });
+        return;
+      }
+      setSelectedId((prev) => (prev === id ? null : id));
+      setPanelOpen(true);
+    },
+    [quickMode, approved, data.courses]
+  );
+
+  const handleQuickToggle = useCallback(() => {
+    setQuickMode((on) => {
+      if (on) {
+        setStaged(new Set());
+        return false;
+      }
+      setMode("progress");
       setSelectedId(null);
-      return;
+      setPanelOpen(false);
+      setStaged(new Set());
+      return true;
+    });
+  }, []);
+
+  const handleQuickFinish = useCallback(() => {
+    const nextApproved = new Set([...approved, ...staged]);
+    const nextEffective = new Set([...effectiveApproved, ...staged]);
+    // courses that flip to "available" thanks to this batch get the unlock glow
+    const unlocked = new Set<string>();
+    for (const c of courses) {
+      if (nextEffective.has(c.id)) continue;
+      const wasAvailable = statusById.get(c.id) === "available";
+      if (wasAvailable) continue;
+      const now = courseAvailability(
+        c,
+        nextEffective,
+        catalogCodes,
+        courses,
+        ruleCtx
+      ).status;
+      if (now === "available") unlocked.add(c.id);
     }
-    setSelectedId((prev) => (prev === id ? null : id));
-    setPanelOpen(true);
+    setApproved(nextApproved);
+    setStaged(new Set());
+    setQuickMode(false);
+    if (unlockTimer.current) clearTimeout(unlockTimer.current);
+    if (unlocked.size > 0) {
+      setJustUnlocked(unlocked);
+      unlockTimer.current = setTimeout(() => setJustUnlocked(new Set()), 1900);
+    } else {
+      setJustUnlocked(new Set());
+    }
+  }, [approved, effectiveApproved, staged, courses, statusById, catalogCodes, ruleCtx]);
+
+  useEffect(
+    () => () => {
+      if (unlockTimer.current) clearTimeout(unlockTimer.current);
+    },
+    []
+  );
+
+  const handleQuickCancel = useCallback(() => {
+    setStaged(new Set());
+    setQuickMode(false);
   }, []);
 
   function handleToggleApproved(id: string) {
@@ -215,6 +309,7 @@ export default function PensumExplorer({ data, mihorarioUrl }: Props) {
     setApproved(new Set());
     setAssignments({});
     setAttestationsMet(new Set());
+    setJustUnlocked(new Set());
     resetProgress(slug);
     setSelectedId(null);
     setPanelOpen(false);
@@ -249,7 +344,15 @@ export default function PensumExplorer({ data, mihorarioUrl }: Props) {
 
   const accent = data.catalog.accentColor ?? "#1f6fc4";
   const filterActive = query.trim().length > 0 || typeFilter !== "all";
-  const showPanel = !!selectedCourse && panelOpen;
+  const showPanel = !quickMode && !!selectedCourse && panelOpen;
+
+  const handleModeChange = useCallback((m: "explore" | "progress") => {
+    setMode(m);
+    if (m === "explore") {
+      setQuickMode(false);
+      setStaged(new Set());
+    }
+  }, []);
 
   return (
     <div className="app-shell">
@@ -266,8 +369,26 @@ export default function PensumExplorer({ data, mihorarioUrl }: Props) {
             ) : null}
           </h1>
         </div>
-        <PlanSwitcher current={slug} options={planOptions} />
+        <div className="app-header-actions">
+          <button
+            className="grado-button"
+            onClick={() => setGradoOpen(true)}
+            title="Requisitos de internacionalización y segundo idioma para grado"
+          >
+            Checklist para grado
+          </button>
+          <PlanSwitcher current={slug} options={planOptions} />
+        </div>
       </header>
+
+      {gradoOpen && (
+        <GradoChecklist
+          attestations={rules.attestations}
+          attestationsMet={attestationsMet}
+          onToggle={handleToggleAttestation}
+          onClose={() => setGradoOpen(false)}
+        />
+      )}
 
       <div className="disclaimer">
         Herramienta informativa. El pensum y los requisitos oficiales son los que publica
@@ -281,7 +402,7 @@ export default function PensumExplorer({ data, mihorarioUrl }: Props) {
 
       <SummaryBar
         mode={mode}
-        onModeChange={setMode}
+        onModeChange={handleModeChange}
         creditsDone={creditsDone}
         creditsTotal={creditsTotal}
         criticalPath={criticalPath}
@@ -294,6 +415,11 @@ export default function PensumExplorer({ data, mihorarioUrl }: Props) {
         attestationsMet={attestationsMet}
         onToggleAttestation={handleToggleAttestation}
         onReset={handleReset}
+        quickMode={quickMode}
+        stagedCount={staged.size}
+        onQuickToggle={handleQuickToggle}
+        onQuickFinish={handleQuickFinish}
+        onQuickCancel={handleQuickCancel}
       />
 
       {searchOpen && (
@@ -317,6 +443,9 @@ export default function PensumExplorer({ data, mihorarioUrl }: Props) {
           matchedIds={matchedIds}
           statusById={statusById}
           lockedIds={lockedIds}
+          stagedIds={staged}
+          justUnlockedIds={justUnlocked}
+          quickMode={quickMode}
           panelOpen={showPanel}
           onSelect={handleSelect}
         />
@@ -351,6 +480,8 @@ export default function PensumExplorer({ data, mihorarioUrl }: Props) {
             electives={data.electives}
             programCode={data.catalog.programCode}
             assignment={selectedCourse ? assignments[selectedCourse.id] : undefined}
+            attestationsMet={attestationsMet}
+            onToggleAttestation={handleToggleAttestation}
             onAssignElective={handleAssignElective}
             onToggleApproved={handleToggleApproved}
             onCollapse={() => setPanelOpen(false)}

@@ -87,6 +87,110 @@ a {
   color: var(--accent);
 }
 
+.app-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.grado-button {
+  border: 1px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, #fff);
+  color: var(--accent);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.grado-button:hover {
+  background: color-mix(in srgb, var(--accent) 16%, #fff);
+}
+
+/* ---------- "Checklist para grado" modal ---------- */
+.grado-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 8vh 16px 16px;
+  overflow-y: auto;
+}
+.grado-modal {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 22px 22px 18px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+}
+.grado-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  border: none;
+  background: none;
+  font-size: 22px;
+  line-height: 1;
+  color: #9ca3af;
+  cursor: pointer;
+}
+.grado-modal h2 {
+  margin: 0 0 4px;
+  font-size: 17px;
+}
+.grado-sub {
+  margin: 0 0 14px;
+  font-size: 12.5px;
+  color: #6b7280;
+}
+.grado-list {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.grado-list label {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 13px;
+  cursor: pointer;
+}
+.grado-list input {
+  margin-top: 2px;
+}
+.grado-desc {
+  display: block;
+  font-size: 11.5px;
+  color: #9ca3af;
+  margin-top: 2px;
+}
+.grado-cta {
+  display: inline-block;
+  background: var(--accent, #1f6fc4);
+  color: #fff;
+  text-decoration: none;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.grado-cta:hover {
+  filter: brightness(0.95);
+}
+.grado-note {
+  margin: 12px 0 0;
+  font-size: 11px;
+  color: #b0b6bf;
+}
+
 /* ---------- plan switcher (dropdown menu) ---------- */
 .plan-switcher {
   position: relative;
@@ -446,6 +550,57 @@ a {
   background: #fef2f2;
 }
 
+.quick-select-button {
+  border: 1px solid #86efac;
+  background: #f0fdf4;
+  color: #166534;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.quick-select-button:hover {
+  background: #dcfce7;
+}
+
+/* quick multi-select action bar (replaces the stats row while active) */
+.quick-select-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 6px 10px;
+  border: 1px solid #86efac;
+  background: #f0fdf4;
+  border-radius: 8px;
+}
+.quick-select-hint {
+  font-size: 12px;
+  color: #166534;
+  max-width: 360px;
+}
+.quick-finish {
+  border: none;
+  background: #16a34a;
+  color: #fff;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.quick-finish:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+.quick-cancel {
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #374151;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
 /* "Requisitos" checklist popover in the summary bar */
 .req-menu {
   position: relative;
@@ -641,6 +796,35 @@ a {
 .graph-legend-row strong {
   color: #1f2430;
 }
+.graph-legend-sep {
+  height: 1px;
+  background: #e5e7eb;
+  margin: 2px 0;
+}
+.legend-swatch {
+  flex-shrink: 0;
+  width: 22px;
+  height: 12px;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+.legend-swatch.swatch-green {
+  background: #dcfce7;
+  border: 2px solid #16a34a;
+}
+.legend-swatch.swatch-amber {
+  background: #fef3c7;
+  border: 2px solid #d97706;
+}
+.legend-swatch.swatch-grey {
+  background: #e5e7eb;
+  border: 2px solid #9ca3af;
+  filter: grayscale(1);
+}
+.legend-swatch.swatch-locked {
+  background: #fde9d3;
+  border: 2px solid #b45309;
+}
 
 /* ---------- course node ----------
    Styled after the published pensum posters: each course is a solid,
@@ -651,6 +835,7 @@ a {
 .course-node {
   --node-color: #6b7280;
   --node-color-dark: #4b5563;
+  position: relative;
   width: 210px;
   background: var(--node-color);
   color: #fff;
@@ -669,6 +854,8 @@ a {
 .course-node.type-cbu            { --node-color: #312e81; --node-color-dark: #26235f; }
 .course-node.type-complementaria { --node-color: #15915f; --node-color-dark: #0f6f49; }
 .course-node.type-proyecto       { --node-color: #1f6fc4; --node-color-dark: #17539a; }
+/* English-reading requirement — a distinct slate tone, not a formación color */
+.course-node.kind-reqing         { --node-color: #475569; --node-color-dark: #334155; }
 
 .course-node-top {
   display: flex;
@@ -721,21 +908,7 @@ a {
   letter-spacing: 0.04em;
 }
 
-.status-tag {
-  font-size: 9px;
-  padding: 1px 6px;
-  border-radius: 999px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  background: rgba(255, 255, 255, 0.92);
-  color: #1f2430;
-}
-
-.status-tag-approved { background: #16a34a; color: #fff; }
-.status-tag-available { background: #fff; color: #15803d; }
-.status-tag-one-away { background: #fef3c7; color: #92400e; }
-.status-tag-blocked { background: #e5e7eb; color: #4b5563; }
+/* course status is shown by colour only (see .graph-legend), no text chip */
 
 /* elective / CBU slots on the poster are outlined, not filled */
 .course-node.is-placeholder {
@@ -748,19 +921,22 @@ a {
 .course-node.is-placeholder .course-credits { background: var(--node-color); }
 .course-node.is-placeholder .course-node-bottom { background: rgba(0, 0, 0, 0.05); }
 .course-node.is-placeholder .course-type-tag { color: #6b7280; }
-.course-node.is-placeholder .status-tag { background: var(--node-color); color: #fff; }
 
-/* ---------- "Mi avance" status treatment ---------- */
+/* ---------- "Mi avance" status treatment — colour is the whole signal ---------- */
+/* green = you can take it now */
 .course-node.status-available {
-  box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--node-color), 0 2px 8px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #16a34a, 0 0 10px rgba(22, 163, 74, 0.45),
+    0 2px 8px rgba(0, 0, 0, 0.28);
 }
 
+/* amber = one course away */
 .course-node.status-one-away {
-  filter: grayscale(0.3);
-  opacity: 0.9;
-  box-shadow: 0 0 0 2px #f59e0b, 0 2px 6px rgba(0, 0, 0, 0.2);
+  filter: grayscale(0.25);
+  opacity: 0.92;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #d97706, 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
+/* grey = several courses away / blocked */
 .course-node.status-blocked {
   filter: grayscale(1);
   opacity: 0.42;
@@ -789,19 +965,105 @@ a {
   box-shadow: 0 0 0 2px #2563eb;
 }
 
+/* transitive dependents of the selected course — faint, just "on the chain" */
 .course-node.is-downstream {
-  box-shadow: 0 0 0 2px #16a34a;
+  box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.32);
+}
+
+/* direct dependents: green = the selected course is their ONLY prerequisite,
+   amber = it's one of several. Wins over .is-downstream (defined after it). */
+.course-node.unlock-sole {
+  box-shadow: 0 0 0 3px #16a34a, 0 0 10px rgba(22, 163, 74, 0.4);
+}
+.course-node.unlock-among {
+  box-shadow: 0 0 0 3px #d97706, 0 0 10px rgba(217, 119, 6, 0.35);
 }
 
 .course-node.is-selected,
 .course-node.is-upstream,
-.course-node.is-downstream {
+.course-node.is-downstream,
+.course-node.unlock-sole,
+.course-node.unlock-among {
   filter: none;
   opacity: 1;
 }
 
+/* quick multi-select staging */
+.course-node.is-staged {
+  box-shadow: 0 0 0 3px #16a34a, 0 0 0 6px rgba(22, 163, 74, 0.25);
+  filter: none;
+  opacity: 1;
+}
+.course-staged-check {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+  background: #16a34a;
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+.course-node.is-placeholder .course-staged-check {
+  color: #fff;
+}
+
 .course-node.is-dimmed {
   opacity: 0.18;
+}
+
+/* ---------- "unlocked!" one-shot animation after "Terminar (N)" ---------- */
+@keyframes unlock-pop {
+  0% {
+    box-shadow: 0 0 0 2px #16a34a, 0 0 0 0 rgba(22, 163, 74, 0.75);
+  }
+  16% {
+    box-shadow: 0 0 0 3px #16a34a, 0 0 28px 11px rgba(22, 163, 74, 0.65);
+  }
+  100% {
+    box-shadow: 0 0 0 2px #fff, 0 0 0 4px #16a34a, 0 0 10px rgba(22, 163, 74, 0.45),
+      0 2px 8px rgba(0, 0, 0, 0.28);
+  }
+}
+@keyframes unlock-glare {
+  from {
+    transform: translateX(-140%) skewX(-18deg);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  to {
+    transform: translateX(160%) skewX(-18deg);
+    opacity: 0;
+  }
+}
+.course-node.is-just-unlocked {
+  animation: unlock-pop 1.9s cubic-bezier(0.22, 1, 0.36, 1);
+  filter: none;
+  opacity: 1;
+  z-index: 5;
+}
+.course-node.is-just-unlocked::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.7) 50%,
+    transparent 65%
+  );
+  animation: unlock-glare 1s ease-out 0.1s both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .course-node.is-just-unlocked {
+    animation: none;
+  }
+  .course-node.is-just-unlocked::after {
+    display: none;
+  }
 }
 
 /* ---------- side panel ---------- */
@@ -907,6 +1169,66 @@ a {
   margin-top: 6px;
 }
 
+.requirement-source {
+  font-size: 10.5px;
+  color: #b0b6bf;
+  margin-top: 4px;
+  font-style: italic;
+}
+
+.coreq-list {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #1f2430;
+}
+.coreq-list li {
+  margin: 1px 0;
+}
+
+.course-description {
+  margin: 14px 0;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+}
+.course-description h3 {
+  margin: 0 0 4px;
+}
+.course-description p {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #374151;
+  margin: 0;
+}
+.course-description p.clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  /* fade the last visible line */
+  -webkit-mask-image: linear-gradient(180deg, #000 62%, transparent);
+  mask-image: linear-gradient(180deg, #000 62%, transparent);
+}
+.desc-toggle {
+  margin-top: 4px;
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--accent, #1f6fc4);
+  cursor: pointer;
+}
+.desc-toggle:hover {
+  text-decoration: underline;
+}
+.course-description .requirement-source {
+  margin-top: 6px;
+}
+
 /* prereq / coreq requirement blocks — colour-keyed to the graph edges */
 .req-section {
   border-left: 3px solid transparent;
@@ -917,6 +1239,9 @@ a {
 }
 .req-coreq {
   border-left-color: #d97706;
+}
+.req-restr {
+  border-left-color: #9ca3af;
 }
 .req-hint {
   display: block;
@@ -968,6 +1293,21 @@ a {
   font-size: 11px;
   color: #9a3412;
   margin: 8px 0 0;
+}
+
+/* CBU / CLE external-oferta blocks in the side panel */
+.ext-link-block {
+  margin-top: 16px;
+  border-left: 3px solid var(--accent, #1f6fc4);
+  padding-left: 10px;
+}
+.ext-link-block h3 {
+  margin: 0 0 4px;
+}
+.ext-link-block p {
+  font-size: 12.5px;
+  color: #4b5563;
+  margin: 0 0 8px;
 }
 
 .status-banner {

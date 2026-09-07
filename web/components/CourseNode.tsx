@@ -1,7 +1,7 @@
 "use client";
 
 import { Handle, Position } from "reactflow";
-import type { Course, AvailabilityStatus } from "@/lib/types";
+import type { Course, AvailabilityStatus, UnlockRelation } from "@/lib/types";
 
 export interface CourseNodeData {
   course: Course;
@@ -12,6 +12,10 @@ export interface CourseNodeData {
   isUpstream: boolean;
   isDownstream: boolean;
   isDimmed: boolean;
+  isStaged: boolean; // marked in the quick multi-select flow
+  isJustUnlocked: boolean; // freshly unlocked by "Terminar" — one-shot glow
+  /** when another course is selected: does approving it unlock this one? */
+  unlock: UnlockRelation;
   onClick: (id: string) => void;
 }
 
@@ -23,35 +27,34 @@ const TYPE_LABEL: Record<Course["type"], string> = {
   proyecto: "Proyecto",
 };
 
-const STATUS_LABEL: Record<AvailabilityStatus, string> = {
-  approved: "Aprobada",
-  available: "Disponible",
-  "one-away": "A un curso",
-  blocked: "Bloqueada",
-};
-
 export default function CourseNode({ data }: { data: CourseNodeData }) {
   const {
     course,
-    mode,
     status,
     isLocked,
     isSelected,
     isUpstream,
     isDownstream,
     isDimmed,
+    isStaged,
+    isJustUnlocked,
+    unlock,
     onClick,
   } = data;
 
   const classNames = [
     "course-node",
     `type-${course.type}`,
+    course.placeholderKind === "REQING" ? "kind-reqing" : "",
     course.isPlaceholder ? "is-placeholder" : "",
     status ? `status-${status}` : "",
     isLocked ? "is-locked" : "",
     isSelected ? "is-selected" : "",
     isUpstream ? "is-upstream" : "",
     isDownstream ? "is-downstream" : "",
+    unlock ? `unlock-${unlock}` : "",
+    isStaged ? "is-staged" : "",
+    isJustUnlocked ? "is-just-unlocked" : "",
     isDimmed ? "is-dimmed" : "",
   ]
     .filter(Boolean)
@@ -74,13 +77,13 @@ export default function CourseNode({ data }: { data: CourseNodeData }) {
       <div className="course-name">{course.name}</div>
       <div className="course-node-bottom">
         <span className="course-type-tag">
-          {isLocked ? "Bloqueada por regla" : TYPE_LABEL[course.type]}
+          {isLocked
+            ? "Bloqueada por regla"
+            : course.placeholderKind === "REQING"
+              ? "Requisito de grado"
+              : TYPE_LABEL[course.type]}
         </span>
-        {mode === "progress" && status && (
-          <span className={`status-tag status-tag-${status}`}>
-            {STATUS_LABEL[status]}
-          </span>
-        )}
+        {isStaged && <span className="course-staged-check">✓ marcada</span>}
       </div>
       <Handle type="source" position={Position.Right} />
     </div>

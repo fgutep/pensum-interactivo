@@ -25,8 +25,14 @@ what's next (P2 admin, P3 Docker), and the gotchas.
 cd web
 npm install          # then: npx prisma generate  (postinstall is sandboxed here)
 npm run db:deploy    # apply schema
-npm run seed         # build DB from the two .xlsx (~30s, calls the live API)
+npm run seed         # first load: DB from the two .xlsx + course API (~60s).
+                     # Re-runs are non-destructive (keep admin edits) — force with
+                     # SEED_REBUILD_COURSES=1 / SEED_RESET_META=1.
 npm run dev          # http://localhost:3000
 ```
+
+Other scripts (all in `web/`):
+- `npm run scrape:desc` — course descriptions from smartcatalogiq → `Course.description` (standalone; the seed never touches it). Docs: `scripts/scrapeDescriptions.md`.
+- `npm run export:templates` — regenerate `plantillas/PLANES.xlsx` + `ELECTIVAS.xlsx` (coordinator import templates) from the DB. Docs: `scripts/exportTemplates.md`.
 
 Do **not** run `npm run build` while `npm run dev` is running — it wipes `.next` and the dev server starts 500ing.

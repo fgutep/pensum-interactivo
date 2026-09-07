@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type {
   Course,
   AvailabilityStatus,
@@ -9,6 +10,32 @@ import type {
 } from "@/lib/types";
 import { renderRequirement } from "@/lib/requirementText";
 import ElectivePicker from "./ElectivePicker";
+
+/** Course description, clamped to a few lines with a "Ver más" toggle. */
+function DescriptionBlock({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const long = text.length > 260;
+  return (
+    <section className="course-description">
+      <h3>Descripción</h3>
+      <p className={!expanded && long ? "clamped" : undefined}>{text}</p>
+      {long && (
+        <button
+          type="button"
+          className="desc-toggle"
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
+        >
+          {expanded ? "Ver menos ▲" : "Ver más ▼"}
+        </button>
+      )}
+      <p className="requirement-source">Fuente: catálogo Uniandes.</p>
+    </section>
+  );
+}
+
+const CBU_OFERTA_URL = "https://educaciongeneral.uniandes.edu.co/cbu/";
+const OFERTA_CURSOS_URL = "https://ofertadecursos.uniandes.edu.co/";
 
 const TYPE_LABEL: Record<Course["type"], string> = {
   nucleo: "Núcleo",
@@ -41,13 +68,27 @@ interface Props {
   electives: ElectiveDTO[];
   programCode: string;
   assignment: ElectiveAssignment | undefined;
+  attestationsMet: Set<string>;
+  onToggleAttestation: (id: string) => void;
   onAssignElective: (slotId: string, a: ElectiveAssignment | null) => void;
   onToggleApproved: (id: string) => void;
   onCollapse: () => void;
   onClose: () => void;
 }
 
-const ELECTIVE_SLOT_KINDS = new Set(["ELECTIVA", "EFI", "CLE"]);
+const ELECTIVE_SLOT_KINDS = new Set(["ELECTIVA", "EFI", "CI"]);
+
+function spaceCode(code: string): string {
+  return code.replace(/^([A-ZÑ]{2,6})(\d.*)$/, "$1 $2");
+}
+
+function restrictionText(r: { type: string; ind: string; desc: string[] }): string {
+  const list = r.desc.join(", ");
+  const ind = r.ind.toUpperCase();
+  if (ind.includes("EXCLU")) return `No aplica para ${list}`;
+  if (ind.includes("SOLO") || ind.includes("INCLU")) return `Solo para ${list}`;
+  return `${r.type}: ${list}`;
+}
 
 function seatsText(seats: [number, number] | undefined): string {
   if (!seats) return "";
@@ -137,6 +178,8 @@ export default function SidePanel({
   electives,
   programCode,
   assignment,
+  attestationsMet,
+  onToggleAttestation,
   onAssignElective,
   onToggleApproved,
   onCollapse,
@@ -150,10 +193,73 @@ export default function SidePanel({
     );
   }
 
+  const kind = course.placeholderKind ?? "";
+  const isEnglishReq = kind === "REQING";
+  const isCbuSlot = kind === "CBU";
+  const isCleSlot = kind === "CLE";
   const isElectiveSlot =
     course.isPlaceholder &&
-    (course.type === "electiva" ||
-      ELECTIVE_SLOT_KINDS.has(course.placeholderKind ?? ""));
+    (course.type === "electiva" || ELECTIVE_SLOT_KINDS.has(kind));
+
+  // --- RequirementNode-backed slot (e.g. lectura en inglés): its own panel,
+  //     all copy/link/attestation come from the DB row via the payload ---
+  if (isEnglishReq) {
+    const attId = course.requirementAttestationId ?? "";
+    const met = attId ? attestationsMet.has(attId) : false;
+    return (
+      <aside className="side-panel">
+        <button className="side-panel-collapse" onClick={onCollapse} aria-label="Ocultar panel" title="Ocultar panel">›</button>
+        <button className="side-panel-close" onClick={onClose} aria-label="Cerrar">×</button>
+        <div className="side-panel-code">Requisito de grado</div>
+        <h2>{course.name}</h2>
+        <div className="side-panel-meta">
+          <span>{course.credits} créditos</span>
+          <span>No es un curso de la oferta</span>
+        </div>
+
+        {mode === "progress" && attId && (
+          <div className={`status-banner status-banner-${met ? "approved" : "one-away"}`}>
+            {met ? "Cumplido" : "Pendiente"}
+          </div>
+        )}
+
+        <section>
+          {course.requirementDescription && <p>{course.requirementDescription}</p>}
+          <p className="requirement-note">
+            Los cursos que lo exigen lo muestran como prerrequisito en el mapa.
+          </p>
+          {course.requirementInfoUrl && (
+            <a
+              className="mihorario-link"
+              href={course.requirementInfoUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              En qué consiste el requisito y cómo cumplirlo →
+            </a>
+          )}
+        </section>
+
+        <section>
+          <h3>Impacto</h3>
+          <p>
+            {dependentsCount === 0
+              ? "Ningún curso de este plan lo exige como prerrequisito."
+              : `${dependentsCount} curso(s) de este plan lo exigen como prerrequisito.`}
+          </p>
+        </section>
+
+        {mode === "progress" && attId && (
+          <button
+            className={`approve-toggle ${met ? "is-approved" : ""}`}
+            onClick={() => onToggleAttestation(attId)}
+          >
+            {met ? "Marcar como pendiente" : "Marcar como cumplido"}
+          </button>
+        )}
+      </aside>
+    );
+  }
 
   const byNormalized = new Map(allCourses.map((c) => [c.codeNormalized, c]));
   const label = (code: string) => {
@@ -205,6 +311,10 @@ export default function SidePanel({
         </section>
       )}
 
+      {course.description && (
+        <DescriptionBlock key={course.id} text={course.description} />
+      )}
+
       <section className="req-section req-prereq">
         <h3>
           Prerrequisitos <span className="req-hint">deben estar aprobados antes</span>
@@ -220,18 +330,60 @@ export default function SidePanel({
             clasificación, etc.) no representados en el grafo.
           </p>
         )}
+        {course.prereqSource && (
+          <p className="requirement-source">
+            {course.prereqSource === "api"
+              ? `Según la oferta de ${term}.`
+              : "Según el documento de prerrequisitos."}
+          </p>
+        )}
       </section>
 
       <section className="req-section req-coreq">
         <h3>
           Correquisitos <span className="req-hint">se ven al tiempo (o antes)</span>
         </h3>
-        <p className="requirement-text">
-          {course.coreqTree
-            ? renderRequirement(course.coreqTree, allCourses)
-            : "Sin correquisitos."}
-        </p>
+        {course.coreqExternal.length > 0 ? (
+          <ul className="coreq-list">
+            {course.coreqExternal.map((c) => {
+              const title = course.coreqTitles?.[c];
+              return (
+                <li key={c}>
+                  <strong>{spaceCode(c)}</strong>
+                  {title ? ` — ${title}` : ""}
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="requirement-text">
+            {course.coreqTree
+              ? renderRequirement(course.coreqTree, allCourses)
+              : "Sin correquisitos."}
+          </p>
+        )}
+        {course.coreqExternal.length > 0 && (
+          <p className="requirement-note">
+            Debes inscribir estos componentes (laboratorio, práctica o trabajo
+            asistido) en el mismo periodo.
+          </p>
+        )}
       </section>
+
+      {course.restrictions && course.restrictions.length > 0 && (
+        <section className="req-section req-restr">
+          <h3>
+            Restricciones <span className="req-hint">informativas</span>
+          </h3>
+          <div className="chip-row">
+            {course.restrictions.map((r, i) => (
+              <span className="chip" key={i}>
+                {restrictionText(r)}
+              </span>
+            ))}
+          </div>
+        </section>
+      )}
 
       {mode === "progress" &&
         status !== "approved" &&
@@ -291,8 +443,46 @@ export default function SidePanel({
           mode={mode}
           assignment={assignment}
           slotCredits={course.credits}
+          integradorOnly={kind === "CI"}
           onAssign={(a) => onAssignElective(course.id, a)}
         />
+      )}
+
+      {isCbuSlot && (
+        <section className="ext-link-block">
+          <h3>Oferta de CBU</h3>
+          <p>
+            Elige cualquier Ciclo Básico Uniandino de la oferta vigente que aún
+            no hayas cursado.
+          </p>
+          <a
+            className="mihorario-link"
+            href={CBU_OFERTA_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Ver la oferta de CBU →
+          </a>
+        </section>
+      )}
+
+      {isCleSlot && (
+        <section className="ext-link-block">
+          <h3>Curso de libre elección</h3>
+          <p>
+            <strong>Cualquier curso con código Uniandes</strong> que no hayas
+            tomado cuenta como homologable para este espacio (según las reglas de
+            tu programa).
+          </p>
+          <a
+            className="mihorario-link"
+            href={OFERTA_CURSOS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Explorar la oferta de cursos →
+          </a>
+        </section>
       )}
 
       {mode === "progress" && !course.isPlaceholder && (

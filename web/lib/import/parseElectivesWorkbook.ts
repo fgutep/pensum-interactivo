@@ -42,6 +42,8 @@ export interface ParsedElective {
     eleUntil2023: RoleCell;
     elcUntil2023: RoleCell;
   };
+  /** "ES CURSO INTEGRADOR" column in the full grid — only a subset qualifies */
+  isCursoIntegrador: boolean;
   offeredTerms: string[];
   sourceFiles: string[];
 }
@@ -104,6 +106,23 @@ function detectTerm(grid: unknown[][]): string | null {
   return /^\d{6}$/.test(c0) ? c0 : null;
 }
 
+/** Column index of the "ES CURSO INTEGRADOR" flag in a full-grid sheet, or -1. */
+function integradorColIndex(grid: unknown[][]): number {
+  for (let r = 0; r < Math.min(grid.length, 4); r++) {
+    const row = grid[r] ?? [];
+    for (let c = 0; c < row.length; c++) {
+      if (foldAccents(String(row[c] ?? "")).includes("CURSO INTEGRADOR")) return c;
+    }
+  }
+  return -1;
+}
+
+/** A flag cell counts as "yes" for 1 / X / SI / VERDADERO / TRUE. */
+function truthyFlag(raw: unknown): boolean {
+  const s = foldAccents(String(raw ?? "")).trim().toUpperCase();
+  return s === "1" || s === "X" || s === "SI" || s === "VERDADERO" || s === "TRUE";
+}
+
 /** Full role-grid sheet: "ELECTIVAS IEE" and the term subset "202620". */
 function parseGrid(
   grid: unknown[][],
@@ -112,6 +131,7 @@ function parseGrid(
   out: Map<string, ParsedElective>
 ) {
   const start = headerRowIndex(grid) + 1;
+  const integCol = integradorColIndex(grid);
   let section = "PREGRADO";
   for (let r = start; r < grid.length; r++) {
     const row = grid[r] ?? [];
@@ -130,6 +150,7 @@ function parseGrid(
         eleUntil2023: cell(row[4]),
         elcUntil2023: cell(row[5]),
       },
+      isCursoIntegrador: integCol >= 0 && truthyFlag(row[integCol]),
       offeredTerms: markTerm ? [markTerm] : [],
       sourceFiles: [fileName],
     });
@@ -159,6 +180,7 @@ function parseMaestriaCatalogue(
         eleUntil2023: EMPTY,
         elcUntil2023: EMPTY,
       },
+      isCursoIntegrador: false,
       offeredTerms: [],
       sourceFiles: [fileName],
     });
@@ -186,6 +208,7 @@ function parseTermNameOnly(
         eleUntil2023: EMPTY,
         elcUntil2023: EMPTY,
       },
+      isCursoIntegrador: false,
       offeredTerms: [term],
       sourceFiles: [fileName],
     });
@@ -211,6 +234,7 @@ function merge(out: Map<string, ParsedElective>, incoming: ParsedElective) {
   cur.roles.elcFrom2024 = mergeRole(cur.roles.elcFrom2024, incoming.roles.elcFrom2024);
   cur.roles.eleUntil2023 = mergeRole(cur.roles.eleUntil2023, incoming.roles.eleUntil2023);
   cur.roles.elcUntil2023 = mergeRole(cur.roles.elcUntil2023, incoming.roles.elcUntil2023);
+  cur.isCursoIntegrador = cur.isCursoIntegrador || incoming.isCursoIntegrador;
   cur.offeredTerms = [...new Set([...cur.offeredTerms, ...incoming.offeredTerms])].sort();
   cur.sourceFiles = [...new Set([...cur.sourceFiles, ...incoming.sourceFiles])].sort();
 }

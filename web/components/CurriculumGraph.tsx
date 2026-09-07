@@ -11,8 +11,8 @@ import ReactFlow, {
   type Node,
 } from "reactflow";
 import "reactflow/dist/style.css";
-import type { Course, AvailabilityStatus } from "@/lib/types";
-import { upstreamOf, downstreamOf } from "@/lib/availability";
+import type { Course, AvailabilityStatus, UnlockRelation } from "@/lib/types";
+import { upstreamOf, downstreamOf, unlockRelation } from "@/lib/availability";
 import CourseNode from "./CourseNode";
 
 const COL_WIDTH = 260;
@@ -22,6 +22,8 @@ const HEADER_H = 46;
 
 const PREREQ_COLOR = "#2563eb"; // solid blue arrow — "must pass before"
 const COREQ_COLOR = "#d97706"; // dashed amber — "same term (or earlier)"
+const UNLOCK_SOLE_COLOR = "#16a34a"; // green — selected course is the only prereq
+const UNLOCK_AMONG_COLOR = "#d97706"; // amber — one of several prereqs
 
 const ROMAN = [
   "",
@@ -85,6 +87,9 @@ interface Props {
   matchedIds: Set<string> | null; // from search/filter; null = no filter active
   statusById: Map<string, AvailabilityStatus>;
   lockedIds: Set<string>; // locked by an admin progression rule
+  stagedIds: Set<string>; // quick multi-select staging
+  justUnlockedIds: Set<string>; // freshly unlocked by the last "Terminar" — glow
+  quickMode: boolean;
   panelOpen: boolean;
   onSelect: (id: string) => void;
 }
@@ -96,6 +101,9 @@ export default function CurriculumGraph({
   matchedIds,
   statusById,
   lockedIds,
+  stagedIds,
+  justUnlockedIds,
+  quickMode,
   panelOpen,
   onSelect,
 }: Props) {
@@ -107,6 +115,21 @@ export default function CurriculumGraph({
     () => (selectedId ? downstreamOf(courses, selectedId) : new Set<string>()),
     [courses, selectedId]
   );
+
+  // When a course is selected, classify every *direct* dependent as unlocked
+  // "sole" (this is its only prerequisite) or "among" (one of several).
+  const unlockById = useMemo(() => {
+    const map = new Map<string, UnlockRelation>();
+    if (!selectedId) return map;
+    const selected = courses.find((c) => c.id === selectedId);
+    if (!selected) return map;
+    const catalogCodes = new Set(courses.map((c) => c.codeNormalized));
+    for (const c of courses) {
+      if (!c.prereqCourseIds.includes(selectedId)) continue;
+      map.set(c.id, unlockRelation(c, selected.codeNormalized, catalogCodes));
+    }
+    return map;
+  }, [courses, selectedId]);
 
   // courses directly corequisite-linked to the selected one (either direction) —
   // so their (dashed) edge shows on selection even though coreqs aren't part of
@@ -165,7 +188,9 @@ export default function CurriculumGraph({
       const list = bySemester.get(semester)!;
       list.forEach((course, row) => {
         const isDimmed =
-          (selectedId !== null &&
+          // no selection-based dimming while quick-selecting
+          (!quickMode &&
+            selectedId !== null &&
             course.id !== selectedId &&
             !upstream.has(course.id) &&
             !downstream.has(course.id) &&
@@ -180,9 +205,12 @@ export default function CurriculumGraph({
             mode,
             status: statusById.get(course.id) ?? null,
             isLocked: lockedIds.has(course.id),
-            isSelected: course.id === selectedId,
-            isUpstream: upstream.has(course.id),
-            isDownstream: downstream.has(course.id),
+            isSelected: !quickMode && course.id === selectedId,
+            isUpstream: !quickMode && upstream.has(course.id),
+            isDownstream: !quickMode && downstream.has(course.id),
+            isStaged: stagedIds.has(course.id),
+            isJustUnlocked: justUnlockedIds.has(course.id),
+            unlock: quickMode ? null : unlockById.get(course.id) ?? null,
             isDimmed,
             onClick: onSelect,
           },
@@ -192,7 +220,7 @@ export default function CurriculumGraph({
       });
     }
     return out;
-  }, [courses, selectedId, upstream, downstream, coreqNeighbors, matchedIds, mode, statusById, lockedIds, onSelect]);
+  }, [courses, selectedId, upstream, downstream, coreqNeighbors, matchedIds, mode, statusById, lockedIds, stagedIds, justUnlockedIds, quickMode, unlockById, onSelect]);
 
   // Edges only appear once a course is selected — then only the ones on that
   // course's prerequisite / dependent chain (plus its direct coreqs) are drawn.
@@ -210,16 +238,25 @@ export default function CurriculumGraph({
     for (const c of courses) {
       for (const prereqId of c.prereqCourseIds) {
         if (!inFocus(c.id) || !inFocus(prereqId)) continue;
+        // Edges leaving the selected course take the semaphore colour of what
+        // they unlock; every other prereq edge stays blue.
+        const rel = prereqId === selectedId ? unlockById.get(c.id) ?? null : null;
+        const color =
+          rel === "sole"
+            ? UNLOCK_SOLE_COLOR
+            : rel === "among"
+              ? UNLOCK_AMONG_COLOR
+              : PREREQ_COLOR;
         out.push({
           id: `${prereqId}->${c.id}`,
           source: prereqId,
           target: c.id,
           type: "smoothstep",
           animated: false,
-          style: { stroke: PREREQ_COLOR, strokeWidth: 2 },
+          style: { stroke: color, strokeWidth: rel ? 2.5 : 2 },
           markerEnd: {
             type: MarkerType.ArrowClosed,
-            color: PREREQ_COLOR,
+            color,
             width: 16,
             height: 16,
           },
@@ -241,7 +278,7 @@ export default function CurriculumGraph({
       }
     }
     return out;
-  }, [courses, selectedId, upstream, downstream, coreqNeighbors]);
+  }, [courses, selectedId, upstream, downstream, coreqNeighbors, unlockById]);
 
   return (
     <div className="graph-wrapper">
@@ -285,6 +322,35 @@ export default function CurriculumGraph({
               <strong>Correquisito</strong> · al tiempo o antes
             </span>
           </div>
+
+          <div className="graph-legend-sep" />
+
+          <div className="graph-legend-row">
+            <span className="legend-swatch swatch-green" aria-hidden />
+            <span>
+              <strong>Verde</strong> ·{" "}
+              {mode === "progress"
+                ? "disponible, o se desbloquea solo con el curso elegido"
+                : "se desbloquea solo con el curso elegido"}
+            </span>
+          </div>
+          <div className="graph-legend-row">
+            <span className="legend-swatch swatch-amber" aria-hidden />
+            <span>
+              <strong>Amarillo</strong> ·{" "}
+              {mode === "progress"
+                ? "te falta un curso, o el elegido es uno de varios prerrequisitos"
+                : "el curso elegido es uno de varios prerrequisitos"}
+            </span>
+          </div>
+          {mode === "progress" && (
+            <div className="graph-legend-row">
+              <span className="legend-swatch swatch-grey" aria-hidden />
+              <span>
+                <strong>Gris</strong> · te faltan varios cursos
+              </span>
+            </div>
+          )}
         </Panel>
       </ReactFlow>
     </div>

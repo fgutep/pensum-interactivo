@@ -30,11 +30,40 @@ model Catalog {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  courses    CatalogCourse[]
-  snapshots  CatalogSnapshot[]
-  importJobs ImportJob[]
+  courses          CatalogCourse[]
+  requirementNodes RequirementNode[]
+  snapshots        CatalogSnapshot[]
+  importJobs       ImportJob[]
 
   @@index([status])
+}
+
+/// A non-course graduation requirement drawn as a 0-credit node in the map
+/// (today: "Requisito de lectura en inglés"). Fully editable from /administrador;
+/// `lib/requirementNodes.ts` only provides the first-load bootstrap.
+model RequirementNode {
+  id                Int      @id @default(autoincrement())
+  catalogId         Int
+  key               String // stable slug, e.g. "req-lectura-ingles"
+  label             String
+  description       String?
+  infoUrl           String?
+  credits           Float    @default(0)
+  semester          Int // which column it sits under
+  sortIndex         Int      @default(9999) // position within the column (bottom by default)
+  /// ties its "cumplido" state to a Catalog.rules attestation id (e.g. "idioma")
+  attestationId     String?
+  /// explicit normalizedCodes of courses that require it (admin-managed); null = []
+  linkedCourseCodes Json?
+  /// on import, auto-attach to any course whose prereq references a matching code
+  autoLinkRegex     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  catalog Catalog @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+
+  @@unique([catalogId, key])
+  @@index([catalogId])
 }
 
 /// Global course registry — MATE1105 is the same course across programs.
@@ -45,6 +74,11 @@ model Course {
   nameEn         String?
   defaultCredits Float?
   createdAt      DateTime @default(now())
+  // --- catalog description, from the smartcatalogiq scraper (scripts/scrapeDescriptions.ts).
+  //     Admin-editable; the seed never touches these. ---
+  description        String?
+  descriptionUrl    String?
+  descriptionSyncedAt DateTime?
 
   catalogCourses CatalogCourse[]
   offerings      CourseOffering[]
@@ -70,6 +104,11 @@ model CatalogCourse {
   coreqTree         Json?
   pairingStatus     String  @default("needs_manual")
   // auto_paired | not_offered | needs_manual | manual_resolved | placeholder_pool | sync_failed
+  /// set once an admin edits this row by hand — a re-import must not silently
+  /// clobber it (surfaces in the diff instead)
+  manuallyEdited    Boolean @default(false)
+  /// field names the admin pinned against import overwrites (null = none)
+  lockedFields      Json?
 
   catalog       Catalog        @relation(fields: [catalogId], references: [id], onDelete: Cascade)
   course        Course?        @relation(fields: [courseId], references: [id])
@@ -96,6 +135,20 @@ model CourseOffering {
   ptrmSet           Json? // string[] e.g. ["8A","16"]
   lastSyncedAt      DateTime @default(now())
   syncError         String?
+
+  // --- live prereq/coreq/restrictions from /api/courseDetails (source of truth
+  //     when present; the PRERREQUISITOS .xlsx is the fallback for courses with
+  //     no offering this term) ---
+  detailsNrc      String? // NRC the details were read from
+  apiPrereqText   String? // raw Spanish boolean expression
+  apiPrereqTree   Json? // ReqNode | null  (parsed apiPrereqText)
+  apiCoreq        Json? // [{subject,coursenumber,title,normalizedCode}]
+  apiCoreqTree    Json? // ReqNode | null  (AND of apiCoreq normalizedCodes)
+  restrictions    Json? // [{type,ind,desc[]}] — informational only, never blocks
+  detailsCompl    Json? // raw `compl` array (unused for now)
+  detailsMaster   Json? // raw `master` array (unused for now)
+  detailsError    String? // set when the courseDetails fetch failed
+  detailsSyncedAt DateTime?
 
   course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
@@ -168,6 +221,7 @@ model Elective {
   level          String // "pregrado" | "maestria" | "other"
   ciclo          String? // from "MATERIAS MAESTRIA" sheet
   roles          Json // { eleFrom2024:{norm,raw}, elcFrom2024, eleUntil2023, elcUntil2023 }
+  isCursoIntegrador Boolean @default(false) // "ES CURSO INTEGRADOR" flag in the bag
   offeredTerms   Json // string[]  e.g. ["202620"]
   sourceFiles    Json // string[]  provenance
   createdAt      DateTime @default(now())

@@ -45,7 +45,27 @@ async function main() {
   console.dir(mate, { depth: 8 });
 
   const offerings = await prisma.courseOffering.count();
-  console.log(`\n== course_offering rows: ${offerings} ==`);
+  const withDetails = await prisma.courseOffering.count({
+    where: { detailsSyncedAt: { not: null }, detailsError: null },
+  });
+  console.log(
+    `\n== course_offering rows: ${offerings}  (with courseDetails: ${withDetails}) ==`
+  );
+
+  const detailSample = await prisma.courseOffering.findFirst({
+    where: { course: { normalizedCode: "IELE2002" } },
+    select: {
+      term: true,
+      detailsNrc: true,
+      apiPrereqText: true,
+      apiPrereqTree: true,
+      apiCoreq: true,
+      apiCoreqTree: true,
+      restrictions: true,
+    },
+  });
+  console.log("\n== IELE2002 courseDetails ==");
+  console.dir(detailSample, { depth: 8 });
 
   await prisma.$disconnect();
 }

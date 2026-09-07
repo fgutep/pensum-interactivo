@@ -165,21 +165,163 @@ migration reference until P1 fully closes, then delete.
   `npm run build` passes, no console errors. `window.confirm` for reset can't be
   driven by browser automation — verified by code.
 
+**P1.9-A — live prereq/coreq via `/api/courseDetails` (complete, verified).**
+- **Discovery.** `GET /api/courseDetails?term=&ptrm=&nrc=` returns `prereq[].code`
+  (same `O`/`Y`/`*` grammar as `requirementParser`), structured `coreq[]`
+  (`{subject,coursenumber,title}`) and `restr[]` — none of which the `/api/courses`
+  list carries. `nrc`+`ptrm` come from the section rows.
+- **Fetch.** `shared-oferta/fetcher.ts` gains `urlCourseDetails` + `fetchCourseDetails`
+  (`DETAILS_BASE` derived from `UNIANDES_API_URL` so the API-down test still
+  redirects it). `offeringsCache.ts` memoises by `${term}:${nrc}`.
+  `pairCatalog.ts` pulls details for each **auto_paired** course's lecture section
+  (`rows[0]`), degrades to a `syncError`-tagged empty result, never trips the
+  abort threshold. `opts.fetchDetails` / `SEED_SKIP_DETAILS=1` to skip.
+- **Store.** Migration `20260906200413_add_course_details` adds to `CourseOffering`:
+  `detailsNrc, apiPrereqText, apiPrereqTree, apiCoreq, apiCoreqTree, restrictions,
+  detailsCompl, detailsMaster, detailsError, detailsSyncedAt`. Written in
+  `persistCatalog.applyPairResult` (JSON-null clears stale values on re-seed).
+- **Payload.** `catalogPayload.ts` prefers `apiPrereqTree`/`apiCoreqTree` over the
+  `.xlsx`-derived trees when details were fetched OK; `PRERREQUISITOS` .xlsx is
+  the fallback for not-offered courses. `Course` gains `prereqSource`/`coreqSource`
+  (`"api"|"document"|null`), `coreqTitles`, `restrictions` (all additive;
+  `availability.ts` untouched). `prereqText` follows the winning source.
+- Verified: `npm run seed` → `details=28..31` per catalog, `sync_failed=0`, 33/40
+  `CourseOffering` rows with details. `IELE2002` payload → `prereqSource:"api"`,
+  `coreqExternal:["IELE2002T","IELE2002L"]` + `coreqTitles`, `restrictions:[NIVEL
+  INCLUYE(SOLO) PREGRADO]`. Node-to-node coreqs still 0 in the 5 CBU3 catalogs
+  (all coreqs are labs), but the wiring populates `coreqCourseIds` when present.
+  Re-seed idempotent. `npm run build` passes.
+
 ### Deferred
 - Seed-time `Elective.code` resolution (the on-demand route covers the student
   flow; a batch pass would let the picker show offering dots without a click).
 - Admin editing of catalog identity + elective bag + progression rules
   (`Catalog.rules`) — all fold into P2, which now has three JSON columns to edit.
+- `courseDetails.compl` / `.master` arrays are stored raw but unused.
+
+**P1.9 — reviewer feedback round (complete, verified in browser).** Ordered:
+**1 + 7 first** (shared "sole vs several prerequisite" logic), then 2–6 + course
+descriptions. Details in
+`~/.claude/projects/.../memory/feedback-round-improvements.md`.
+
+- **1. Semáforo de prerrequisitos (done, verified in browser).** `CourseNode`
+  no longer renders the `status-tag` text chip — colour is the whole signal.
+  `availability.unlockRelation(dependent, selectedCode, catalogCodes)` →
+  `"sole" | "among" | null`; `CurriculumGraph` builds `unlockById` for the
+  selected course's direct dependents and passes `unlock` into node data +
+  colours the leaving edges green (sole) / amber (among). `status-available` is
+  now an explicit green ring, `status-one-away` an amber ring, `status-blocked`
+  grey — `is-downstream` (transitive) demoted to a faint ring. Legend `<Panel>`
+  gained a colour key (Verde / Amarillo / Gris / 🔒). SidePanel: coreqs render
+  from `coreqExternal` + `coreqTitles` as a "debes inscribir al tiempo" list, a
+  `req-restr` section shows `restrictions` chips, and a `requirement-source`
+  line notes API vs document provenance.
+- **7. "Mi avance" selección rápida (done, verified in browser).** `quickMode` +
+  `staged` set in `PensumExplorer`; "Selección rápida" button in `SummaryBar`
+  (progress mode) → green action bar with hint + "Terminar (N)" / "Cancelar".
+  In quick mode a node click stages/unstages (non-placeholder, not-yet-approved;
+  no panel, no dimming); nodes show `is-staged` (double green ring + "✓ marcada"
+  chip). "Terminar" folds `staged` into `approved` and the graph recolours.
+  Switching to Explorar cancels it. Verified: 0→13/134 credits after staging 5.
+  On "Terminar", courses that flip to `available` get a one-shot `is-just-unlocked`
+  animation (green `unlock-pop` glow + `unlock-glare` sweep, ~1.9s, cleared by a
+  ref'd timer; `prefers-reduced-motion` respected). `justUnlocked` set lives in
+  `PensumExplorer`, computed by diffing pre/post `courseAvailability`.
+- **2. Curso Integrador (done, verified).** `BOLSA DE ELECTIVAS.xlsx` sheet
+  `ELECTIVAS IEE` gained an "ES CURSO INTEGRADOR" column (0/1). Parser detects it
+  by header text (`integradorColIndex`), `truthyFlag()` for 1/X/SI; new
+  `Elective.isCursoIntegrador` (migration `20260906212731`). `ElectivePicker`
+  gets `integradorOnly` → filters to the 7 flagged electives, drops role/era
+  narrowing. `ELECTIVE_SLOT_KINDS` now `{ELECTIVA, EFI, CI}`; SidePanel passes
+  `integradorOnly={kind==="CI"}`.
+- **3. CLE (done).** SidePanel CLE branch (kind removed from `ELECTIVE_SLOT_KINDS`)
+  → `ext-link-block`: "cualquier curso con código Uniandes … homologable" +
+  link to `ofertadecursos.uniandes.edu.co`. No picker/search.
+- **4. CBU (done).** SidePanel `isCbuSlot` branch → `ext-link-block` with link to
+  `educaciongeneral.uniandes.edu.co/cbu/`.
+- **5. Requisito de inglés (done, verified).** `catalogPayload.ts` injects one
+  synthetic node `ENGLISH_REQ_ID` (`REQ. INGLÉS`, 0 cr, semester 5, bottom of the
+  column, `placeholderKind:"REQING"`, slate colour). Courses whose
+  `prereqExternal` matches `ENGLISH_REQ_CODE_RE` get it added to
+  `prereqCourseIds` and the code stripped from `prereqExternal` (4 courses in
+  `iele-cbu3`). Its "cumplido" state IS the `idioma` attestation: `PensumExplorer`
+  derives `effectiveApproved = approved ∪ {ENGLISH_REQ_ID}` when
+  `attestationsMet.has("idioma")` and feeds that to every availability/credits/
+  critical-path calc. SidePanel has a dedicated `isEnglishReq` panel (description,
+  info link to cienciassociales, Impacto, "Marcar como cumplido" → toggles the
+  attestation). `autoGatePrereqRegex` **removed from the seeded `idioma`
+  attestation** (the node now blocks); the field + `evaluateGates` support stays
+  for future attestations.
+- **6. "Checklist para grado" (done, verified).** New `app-header-actions` with a
+  `grado-button` → `GradoChecklist` modal (Esc/backdrop close). Lists **three**
+  attestations — `idioma` (lectura en inglés), `internacionalizacion`, `saberpro`
+  (internacionalización and Saber Pro are *distinct* requirements) — with
+  checkboxes + descriptions + CTA to
+  `registro.uniandes.edu.co/index.php/formulario-de-graduandos`. Reuses
+  `attestationsMet` / `handleToggleAttestation` (persisted + share hash already).
+- **8. Course descriptions (done, verified).** Standalone scraper for
+  smartcatalogiq — `lib/import/smartcatalog.ts` (fetch + parse, decodes the
+  Windows-1252 pages + Latin-1 named entities) + `scripts/scrapeDescriptions.ts`
+  (`npm run scrape:desc`, `scripts/scrapeDescriptions.md` docs). Harvests
+  course-page URLs from the 2 EE program pages (year/level vary per course),
+  fallback-constructs a URL otherwise. New `Course.description / descriptionUrl /
+  descriptionSyncedAt` (migration `20260906222717`); the seed never touches them.
+  `catalogPayload` puts `description` on `Course`; SidePanel renders a
+  "DESCRIPCIÓN" block. Local run: 34/40 registry courses populated (the 6 misses
+  are brand-new or wildcard codes not in the 2024/25 catalog).
+
+**P1.9-B — DB is authoritative, Excel is import-only (done, verified).**
+Everything discussed today had to be *mutable/editable over time*, not re-derived
+from Excel or code on every seed. Changes:
+- **`RequirementNode` model** (migration `20260906220510`): one row per catalog
+  for the English-reading requirement (`key, label, description, infoUrl,
+  credits, semester, sortIndex, attestationId, linkedCourseCodes, autoLinkRegex`).
+  `catalogPayload.ts` builds the node from this row (position, label, link,
+  attestation all editable) instead of synthesizing it; auto-attach still works
+  via `autoLinkRegex`, plus an explicit `linkedCourseCodes` list. `Course` gains
+  `requirementAttestationId / requirementInfoUrl / requirementDescription`;
+  `PensumExplorer.effectiveApproved` and the SidePanel `isEnglishReq` panel are
+  now data-driven (no `ENGLISH_*` constants in the components). Payload also
+  exposes `requirementNodes: RequirementNodeDTO[]`.
+- **`CatalogCourse.manuallyEdited` + `lockedFields`** columns (schema-ready for
+  the P2 diff/apply; unused at runtime yet).
+- **`persistParsedCatalog` is now non-destructive by default.** `Catalog.rules` /
+  identity / `RequirementNode` rows are only written on first load (or with
+  `SEED_RESET_META=1`); `CatalogCourse` rows are only rebuilt on first load (or
+  `SEED_REBUILD_COURSES=1`) — otherwise the DB rows (incl. admin edits) are kept
+  and only pairing/offering data is refreshed. `Elective.isCursoIntegrador` is
+  create-only too. `lib/requirementNodes.ts` = first-load bootstrap, like
+  `catalogRules.ts` / `catalogIdentity.ts`.
+- Verified: re-seed shows "49 courses (kept)", `RequirementNode` not duplicated;
+  a hand DB edit to `MATE 1203` (name/credits/`manuallyEdited`) and to a
+  `RequirementNode` (semester/label) both survived a full `npm run seed`.
+  `SEED_RESET_META=1 SEED_REBUILD_COURSES=1` re-derives from Excel on demand.
+
+**P1.9-C — coordinator import templates (proposed + generated).**
+`npm run export:templates` (`scripts/exportTemplates.ts`, exceljs) →
+`plantillas/PLANES.xlsx` + `plantillas/ELECTIVAS.xlsx`, populated from the DB
+(original-Excel structure + API-synced prereqs). Flat "one row = one course/slot"
+with `Semestre` as an explicit column (replaces the wide `PENSUMS` grid + its
+stale SEM-marker bug). `PLANES.xlsx`: 5 plan sheets + `_CATALOGOS`,
+`_REQUISITOS_GRADO`, `_NODOS_REQUISITO`, `_INSTRUCCIONES`. `ELECTIVAS.xlsx`:
+one row per elective with the 4 role columns + `Es Curso Integrador`. Dropdowns,
+per-semester banding, frozen panes, red highlight on blank `Semestre`, subtotal
+rows. Format/diff contract in `scripts/exportTemplates.md`. These are the input
+format for the P2 importer (not consumed by the current `seed.ts`).
 
 ## Next
 
-**P2 — admin `/administrador`.** `lib/auth/` (password provider + signed cookie),
+**P2 — admin `/administrador`.** *(now: full CRUD of every course attribute +
+`RequirementNode` editor + `Catalog.rules` (attestations/gates) editor + catalog
+identity; `apply.ts` must upsert-by-key + honour `lockedFields`/`manuallyEdited`,
+never delete+recreate.)* `lib/auth/` (password provider + signed cookie),
 `middleware.ts` gating `/administrador/*` + `/api/admin/*`. Screens: login, catalog
 list, upload (pensum xlsx + optional prereq xlsx) → validation report → per-catalog
 diff → apply/discard, manual-pairing queue (Excel-prefilled rows + live API search
 widget to bind a real code / keep-as-placeholder), re-sync offerings, snapshot list +
 rollback. `lib/import/apply.ts` = snapshot + `persistCatalog` + import-job status in
-one txn. `lib/import/diff.ts`. Every mutation writes `AuditLog`.
+one txn. `lib/import/diff.ts`. Every mutation writes `AuditLog`. **Re-sync must pass
+`fetchDetails` through to `pairCatalog` and expose a details-only re-pull.**
 
 **P3 — Docker.** Multi-stage `web/Dockerfile` (`output: "standalone"`, non-root,
 `VOLUME /data`, `prisma migrate deploy` on start, healthcheck). Root
@@ -193,7 +335,21 @@ Then delete `Custom_Pensum/app/`.
 - Do NOT `npm run build` while `npm run dev` is running — it wipes `.next` and the
   dev server starts 500ing; restart dev after any build.
 - `scripts/*.ts` need `web/.env` — seed/inspect call `process.loadEnvFile()` when
-  `DATABASE_URL` is unset; the Next app loads `.env` itself.
+  `DATABASE_URL` is unset; the Next app loads `.env` itself. `.env` is gitignored;
+  for local dev copy `.env.example` and set `DATABASE_URL="file:./dev.db"`
+  (resolves to `web/prisma/dev.db`, also gitignored).
+- Seeding now makes ~2 API calls per offered course (`/api/courses` +
+  `/api/courseDetails`); still well under the abort threshold with concurrency 4 +
+  the per-run cache. `SEED_SKIP_DETAILS=1` pulls offerings only.
+- **A plain `npm run seed` is non-destructive** once catalogs exist: it keeps
+  `CatalogCourse` rows, `Catalog.rules`/identity and `RequirementNode` rows
+  (they're admin-owned) and only refreshes pairing/offerings. To re-derive from
+  the Excel: `SEED_REBUILD_COURSES=1` (course rows) and/or `SEED_RESET_META=1`
+  (rules + identity + requirement nodes + elective integrador flag). A truly
+  fresh build = delete `web/prisma/dev.db*` then `npm run seed`.
+- Prisma + SQLite: `Json @default("[]")` emits broken DDL (`DEFAULT []`
+  unquoted → P2023 on read). Use a nullable `Json?` and treat null as `[]` in
+  code instead.
 - `PRAGMA` statements return rows in Prisma+SQLite → use `$queryRawUnsafe`, not
   `$executeRawUnsafe` (`lib/db.ts` `applySqlitePragmas`).
 - The "con Precálculo" sheets have stale `SEM n` column markers (off by one vs the

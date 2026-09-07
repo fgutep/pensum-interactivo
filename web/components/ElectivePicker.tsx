@@ -18,6 +18,8 @@ interface Props {
   mode: "explore" | "progress";
   assignment?: ElectiveAssignment;
   slotCredits: number;
+  /** Curso Integrador slot — filter to the flagged subset, ignore role narrowing */
+  integradorOnly?: boolean;
   onAssign: (a: ElectiveAssignment | null) => void;
 }
 
@@ -58,6 +60,7 @@ export default function ElectivePicker({
   mode,
   assignment,
   slotCredits,
+  integradorOnly = false,
   onAssign,
 }: Props) {
   const [era, setEra] = useState<Era>("from2024");
@@ -67,7 +70,10 @@ export default function ElectivePicker({
   const [resolveError, setResolveError] = useState<string | null>(null);
 
   const canPick = mode === "progress";
-  const wantRole = useMemo(() => narrowFromSlot(slotLabel), [slotLabel]);
+  const wantRole = useMemo(
+    () => (integradorOnly ? null : narrowFromSlot(slotLabel)),
+    [slotLabel, integradorOnly]
+  );
   const tShort = termShort(term);
 
   async function pick(e: ElectiveDTO) {
@@ -123,9 +129,13 @@ export default function ElectivePicker({
   const filtered = useMemo(() => {
     const needle = foldAccents(q).trim();
     return electives.filter((e) => {
-      const cells = rolesFor(e).filter((c) => c && c.norm);
-      if (cells.length === 0) return false;
-      if (wantRole && !cells.some((c) => c.norm === wantRole)) return false;
+      if (integradorOnly) {
+        if (!e.isCursoIntegrador) return false;
+      } else {
+        const cells = rolesFor(e).filter((c) => c && c.norm);
+        if (cells.length === 0) return false;
+        if (wantRole && !cells.some((c) => c.norm === wantRole)) return false;
+      }
       if (onlyThisTerm && !e.offeredTerms.includes(term)) return false;
       if (needle) {
         const hay = foldAccents(`${e.name} ${e.ciclo ?? ""}`);
@@ -134,7 +144,7 @@ export default function ElectivePicker({
       return true;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [electives, era, onlyThisTerm, q, wantRole, term, programCode]);
+  }, [electives, era, onlyThisTerm, q, wantRole, term, programCode, integradorOnly]);
 
   const roleChips = (e: ElectiveDTO) => {
     const suffix = era === "from2024" ? "From2024" : "Until2023";
@@ -159,9 +169,17 @@ export default function ElectivePicker({
   return (
     <section className="elective-picker">
       <h3>
-        Electivas válidas{wantRole ? ` · ${ROLE_LABEL[wantRole]}` : ""}{" "}
+        {integradorOnly
+          ? "Cursos válidos como Integrador"
+          : `Electivas válidas${wantRole ? ` · ${ROLE_LABEL[wantRole]}` : ""}`}{" "}
         <span className="elective-count">{filtered.length}</span>
       </h3>
+      {integradorOnly && (
+        <p className="elective-hint">
+          Solo estos cursos de la bolsa cuentan para el espacio de Curso
+          Integrador.
+        </p>
+      )}
 
       {canPick && assignment && (
         <div className="elective-assigned">
@@ -194,22 +212,24 @@ export default function ElectivePicker({
       )}
 
       <div className="elective-filters">
-        <div className="elective-era" role="tablist" aria-label="Era del pensum">
-          <button
-            type="button"
-            className={era === "from2024" ? "active" : ""}
-            onClick={() => setEra("from2024")}
-          >
-            Pensum 2024-I+
-          </button>
-          <button
-            type="button"
-            className={era === "until2023" ? "active" : ""}
-            onClick={() => setEra("until2023")}
-          >
-            Hasta 2023-II
-          </button>
-        </div>
+        {!integradorOnly && (
+          <div className="elective-era" role="tablist" aria-label="Era del pensum">
+            <button
+              type="button"
+              className={era === "from2024" ? "active" : ""}
+              onClick={() => setEra("from2024")}
+            >
+              Pensum 2024-I+
+            </button>
+            <button
+              type="button"
+              className={era === "until2023" ? "active" : ""}
+              onClick={() => setEra("until2023")}
+            >
+              Hasta 2023-II
+            </button>
+          </div>
+        )}
         <label className="elective-term-toggle">
           <input
             type="checkbox"

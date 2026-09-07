@@ -16,6 +16,17 @@ export interface ReqNode {
   soft?: boolean;
 }
 
+/** An enrollment restriction from /api/courseDetails. Informational only — the
+ * app never blocks a course on these. */
+export interface Restriction {
+  type: string; // "NIVEL" | "PROGRAMA" | ...
+  ind: string; // "INCLUYE(SOLO)" | "EXCLUYE" | ...
+  desc: string[]; // ["PREGRADO"]
+}
+
+/** Where a course's requirement data came from. */
+export type RequirementSource = "api" | "document" | null;
+
 export interface Course {
   id: string;
   code: string;
@@ -28,6 +39,8 @@ export interface Course {
   /** placeholder taxonomy from the import (CBU|ELECTIVA|EFI|CLE|DEPT|CODEX|CI) */
   placeholderKind?: string | null;
   placeholderLabel?: string | null;
+  /** catalog description (smartcatalogiq scraper), when available */
+  description?: string | null;
   prereqText: string;
   coreqText: string;
   prereqTree: ReqNode | null;
@@ -38,6 +51,32 @@ export interface Course {
   coreqCourseIds: string[];
   /** coreq codes not in this catalog (labs/practices like "IELE 1118L") */
   coreqExternal: string[];
+  /** "api" when prereq/coreq came from the live courseDetails endpoint,
+   * "document" when from the PRERREQUISITOS spreadsheet, null when neither */
+  prereqSource?: RequirementSource;
+  coreqSource?: RequirementSource;
+  /** title per coreq code, when known from the API ("IELE2002L" → "LAB. …") */
+  coreqTitles?: Record<string, string>;
+  /** enrollment restrictions (informational, from the API) */
+  restrictions?: Restriction[];
+  /** for a RequirementNode-backed slot: which attestation flips its "cumplido"
+   * state, plus its editable info text/link (all from the DB row) */
+  requirementAttestationId?: string | null;
+  requirementInfoUrl?: string | null;
+  requirementDescription?: string | null;
+}
+
+/** One editable non-course graduation requirement (RequirementNode row). */
+export interface RequirementNodeDTO {
+  key: string;
+  label: string;
+  description: string | null;
+  infoUrl: string | null;
+  credits: number;
+  semester: number;
+  sortIndex: number;
+  attestationId: string | null;
+  linkedCourseCodes: string[];
 }
 
 export type AvailabilityStatus =
@@ -45,6 +84,11 @@ export type AvailabilityStatus =
   | "available"
   | "one-away"
   | "blocked";
+
+/** How a selected course relates to a course it helps unlock:
+ *  "sole" — it is the only in-catalog prerequisite still missing;
+ *  "among" — one of several; null — not on the prerequisite path. */
+export type UnlockRelation = "sole" | "among" | null;
 
 // ---------- new: live-offering + catalog payload ----------
 
@@ -77,8 +121,19 @@ export interface ElectiveDTO {
     eleUntil2023: RoleCell;
     elcUntil2023: RoleCell;
   };
+  /** counts toward the "Curso Integrador" slot ("ES CURSO INTEGRADOR" in the bag) */
+  isCursoIntegrador: boolean;
   offeredTerms: string[];
 }
+
+/** Synthetic node for the English-reading graduation requirement (point 5).
+ * Not a real offered course; its "approved" state IS the `idioma` attestation. */
+export const ENGLISH_REQ_ID = "req-lectura-ingles";
+export const ENGLISH_ATTESTATION_ID = "idioma";
+export const INTERNACIONALIZACION_ATTESTATION_ID = "internacionalizacion";
+export const SABERPRO_ATTESTATION_ID = "saberpro";
+/** prereq codes that mean "the English reading requirement" */
+export const ENGLISH_REQ_CODE_RE = /^(LENG|ENGL|RLEC|IDIO)/;
 
 // ---------- admin progression rules ----------
 
@@ -155,4 +210,6 @@ export interface CatalogPayload {
   electives: ElectiveDTO[];
   /** admin-defined progression rules (gates + attestations) */
   rules: CatalogRules;
+  /** non-course graduation requirements (also present in `courses` as nodes) */
+  requirementNodes: RequirementNodeDTO[];
 }
