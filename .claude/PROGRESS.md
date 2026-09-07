@@ -309,19 +309,74 @@ per-semester banding, frozen panes, red highlight on blank `Semestre`, subtotal
 rows. Format/diff contract in `scripts/exportTemplates.md`. These are the input
 format for the P2 importer (not consumed by the current `seed.ts`).
 
+**P2.1 — admin auth + shell + catalog list (done, verified).**
+- `lib/auth/session.ts` — Edge-compatible signed cookie (`pensum_admin`,
+  HMAC-SHA256 via Web Crypto, 12h TTL, `SESSION_SECRET`). `lib/auth/password.ts`
+  — timing-safe compare vs `ADMIN_PASSWORD`. `middleware.ts` gates
+  `/administrador/:path*` + `/api/admin/:path*` (login/logout public) → redirect
+  to `/administrador/login?next=` or 401 for `/api/admin`.
+- `app/api/admin/{login,logout}/route.ts` (nodejs runtime). Login page
+  `app/administrador/login/page.tsx` (client form, JSON POST).
+- Shell: `app/administrador/layout.tsx` (pass-through + `admin.css`, scoped to
+  `.admin-root`, `robots: noindex`) → `(panel)/layout.tsx` (sidebar
+  `components/admin/AdminNav.tsx` — Catálogos / Importar / Electivas / Requisitos
+  de grado / Auditoría + logout). Login sits outside the `(panel)` group so it
+  has no sidebar.
+- `(panel)/page.tsx` — catalog list (server, `force-dynamic`): programa·variante,
+  estado badge, término, #cursos + #requirement nodes, pairing-status breakdown,
+  "Editar" → `(panel)/catalogos/[slug]/page.tsx` (stub for P2.2).
+- `lib/audit.ts` — `writeAudit()` (never throws).
+- Verified by curl: unauth → 307 to login; wrong pw → 401; `dev-admin` → cookie +
+  200; authed list renders; logout → cookie cleared → 307. `npm run build` passes
+  (`ƒ Middleware` registered). Screenshot of login + list confirmed.
+
+**P2.3 — Excel import → diff → apply (done, verified).**
+- `lib/import/parsePlanesWorkbook.ts` — parser for the flat template (`PLANES.xlsx`):
+  5 plan sheets → `ParsedPlanCourse[]` (`Semestre` explicit, `Total …` rows +
+  `_INSTRUCCIONES` skipped), `_CATALOGOS` / `_REQUISITOS_GRADO` / `_NODOS_REQUISITO`
+  → config. Uses `xlsx` (SheetJS), not `exceljs` (that's a devDep, prod code
+  can't use it).
+- `lib/import/diffPlanes.ts` — `buildPlanesDiff(parsed, prisma)`: field-level
+  diff. Course key = `normalizedCode` (real) / `${kind}#${sem}#${n}` (placeholder).
+  A changed field is a **conflict** when it's in the DB row's `lockedFields`;
+  `manuallyEdited` rows flag removals as conflicts. `prereqText` diffs only when
+  the sheet cell is non-empty. `export:templates` fixed to write
+  `CatalogCourse.prereqText` (the fallback text the diff compares), not the
+  API-merged payload text.
+- `lib/import/applyPlanes.ts` — `applyPlanesJob(jobId, {confirmRemovals,
+  forceConflicts})`: re-diffs live, snapshots every affected catalog
+  (`reason:"pre-import"`), then one `$transaction`: upsert catalogs, courses
+  (add/modify/remove by key, skipping conflicts unless forced), `RequirementNode`
+  (global → every affected catalog), rebuild `Catalog.rules` from
+  `_REQUISITOS_GRADO`. New courses land `needs_manual` (P2.4 re-sync pulls
+  offerings — no API call here). `discardImportJob()`.
+- Routes: `POST /api/admin/imports` (multipart, `planes` field → parse + diff +
+  `ImportJob`), `.../[jobId]/apply`, `.../[jobId]/discard`.
+- Screens: `(panel)/importar/page.tsx` (`ImportUploader` + recent jobs),
+  `(panel)/importar/[jobId]/page.tsx` (diff render: per-catalog identity /
+  added / modified with before→after / removed, requirement nodes, grad rules;
+  `ImportActions` client with the two checkboxes + Aplicar/Descartar).
+- Verified end-to-end: uploaded a mutated `PLANES.xlsx` (credits, semester, name,
+  tagline, +1 grad requirement) → diff showed exactly those (`1 nuevo, 3
+  modificados, 0 conflictos`) → Aplicar → DB reflected all changes + 5
+  `pre-import` snapshots + job `applied`. DB restored afterwards. `npm run build`
+  passes.
+
 ## Next
 
-**P2 — admin `/administrador`.** *(now: full CRUD of every course attribute +
-`RequirementNode` editor + `Catalog.rules` (attestations/gates) editor + catalog
-identity; `apply.ts` must upsert-by-key + honour `lockedFields`/`manuallyEdited`,
-never delete+recreate.)* `lib/auth/` (password provider + signed cookie),
-`middleware.ts` gating `/administrador/*` + `/api/admin/*`. Screens: login, catalog
-list, upload (pensum xlsx + optional prereq xlsx) → validation report → per-catalog
-diff → apply/discard, manual-pairing queue (Excel-prefilled rows + live API search
-widget to bind a real code / keep-as-placeholder), re-sync offerings, snapshot list +
-rollback. `lib/import/apply.ts` = snapshot + `persistCatalog` + import-job status in
-one txn. `lib/import/diff.ts`. Every mutation writes `AuditLog`. **Re-sync must pass
-`fetchDetails` through to `pairCatalog` and expose a details-only re-pull.**
+**P2.2 — direct editors** (DB-authoritative CRUD): catalog identity + `Catalog.rules`
+(attestations/gates) form; `CatalogCourse` table editor (every field, add/remove,
+reorder, `manuallyEdited` + per-field `lockedFields`); `RequirementNode` CRUD;
+`Elective` table. Each mutation → `writeAudit` + set `manuallyEdited`. The stub at
+`(panel)/catalogos/[slug]/page.tsx` is where this lands.
+
+**P2.4 — manual-pairing queue + re-sync.** Queue of `pairingStatus ∈
+{needs_manual,not_offered,placeholder_pool,sync_failed}`; `GET
+/api/admin/course-search` proxy; bind-to-code / keep-as-placeholder;
+`POST /api/admin/catalogs/[slug]/resync` → `pairCatalog` with `fetchDetails`
+passthrough + a details-only re-pull.
+
+**P2.5 — snapshots/rollback + `AuditLog` viewer.**
 
 **P3 — Docker.** Multi-stage `web/Dockerfile` (`output: "standalone"`, non-root,
 `VOLUME /data`, `prisma migrate deploy` on start, healthcheck). Root

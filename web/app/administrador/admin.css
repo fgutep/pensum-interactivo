@@ -1,0 +1,398 @@
+/* Scoped to .admin-root so it never touches the student UI. */
+.admin-root {
+  --a-accent: #1f6fc4;
+  --a-bg: #f6f7f9;
+  --a-panel: #ffffff;
+  --a-border: #e3e6ea;
+  --a-text: #1f2430;
+  --a-muted: #6b7280;
+  min-height: 100vh;
+  background: var(--a-bg);
+  color: var(--a-text);
+  font-size: 14px;
+}
+
+.admin-root a {
+  color: var(--a-accent);
+  text-decoration: none;
+}
+.admin-root a:hover {
+  text-decoration: underline;
+}
+
+/* ---------- login ---------- */
+.admin-login {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+.admin-login-card {
+  width: 100%;
+  max-width: 340px;
+  background: var(--a-panel);
+  border: 1px solid var(--a-border);
+  border-radius: 12px;
+  padding: 28px 26px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+}
+.admin-login-card h1 {
+  margin: 0 0 4px;
+  font-size: 17px;
+}
+.admin-login-card p {
+  margin: 0 0 18px;
+  color: var(--a-muted);
+  font-size: 12.5px;
+}
+.admin-login-card label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.admin-login-card input[type="password"] {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--a-border);
+  border-radius: 8px;
+  padding: 9px 11px;
+  font-size: 14px;
+}
+.admin-login-card button {
+  width: 100%;
+  margin-top: 14px;
+  border: none;
+  background: var(--a-accent);
+  color: #fff;
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.admin-login-card button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+.admin-login-error {
+  margin-top: 12px;
+  font-size: 12.5px;
+  color: #b91c1c;
+}
+
+/* ---------- shell ---------- */
+.admin-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 100vh;
+}
+.admin-side {
+  background: var(--a-panel);
+  border-right: 1px solid var(--a-border);
+  padding: 18px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.admin-side-brand {
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  padding: 4px 8px 14px;
+}
+.admin-side-brand small {
+  display: block;
+  font-weight: 500;
+  color: var(--a-muted);
+  letter-spacing: 0;
+}
+.admin-nav-link {
+  display: block;
+  padding: 8px 10px;
+  border-radius: 7px;
+  color: var(--a-text);
+  font-weight: 500;
+}
+.admin-nav-link:hover {
+  background: #eef1f4;
+  text-decoration: none;
+}
+.admin-nav-link.active {
+  background: color-mix(in srgb, var(--a-accent) 12%, #fff);
+  color: var(--a-accent);
+  font-weight: 700;
+}
+.admin-side-spacer {
+  flex: 1;
+}
+.admin-logout {
+  border: 1px solid var(--a-border);
+  background: #fff;
+  border-radius: 7px;
+  padding: 8px 10px;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.admin-logout:hover {
+  background: #f3f4f6;
+}
+
+.admin-main {
+  padding: 26px 30px;
+  max-width: 1100px;
+}
+.admin-main h1 {
+  margin: 0 0 4px;
+  font-size: 20px;
+}
+.admin-main .admin-sub {
+  margin: 0 0 22px;
+  color: var(--a-muted);
+  font-size: 13px;
+}
+
+/* ---------- table ---------- */
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--a-panel);
+  border: 1px solid var(--a-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.admin-table th,
+.admin-table td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--a-border);
+  vertical-align: top;
+}
+.admin-table th {
+  background: #fafbfc;
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--a-muted);
+}
+.admin-table tr:last-child td {
+  border-bottom: none;
+}
+.admin-table tr:hover td {
+  background: #fcfdfe;
+}
+
+.admin-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.admin-badge.published {
+  background: #dcfce7;
+  color: #166534;
+}
+.admin-badge.draft {
+  background: #fef3c7;
+  color: #92400e;
+}
+.admin-badge.archived {
+  background: #e5e7eb;
+  color: #4b5563;
+}
+
+.admin-pair {
+  font-size: 12px;
+  color: var(--a-muted);
+}
+.admin-pair b {
+  color: var(--a-text);
+}
+.admin-pair .warn {
+  color: #b45309;
+}
+
+.admin-btn {
+  border: 1px solid var(--a-border);
+  background: #fff;
+  border-radius: 7px;
+  padding: 5px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.admin-btn:hover {
+  background: #f3f4f6;
+}
+.admin-btn.primary {
+  border-color: var(--a-accent);
+  background: var(--a-accent);
+  color: #fff;
+}
+.admin-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.admin-btn.danger {
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+/* ---------- forms / cards ---------- */
+.admin-card {
+  background: var(--a-panel);
+  border: 1px solid var(--a-border);
+  border-radius: 10px;
+  padding: 18px 20px;
+  margin-bottom: 18px;
+}
+.admin-card h2 {
+  margin: 0 0 10px;
+  font-size: 15px;
+}
+.admin-file {
+  display: block;
+  margin: 10px 0;
+  font-size: 13px;
+}
+.admin-note {
+  font-size: 12px;
+  color: var(--a-muted);
+}
+.admin-error {
+  margin-top: 10px;
+  color: #b91c1c;
+  font-size: 12.5px;
+}
+
+/* ---------- import diff ---------- */
+.diff-warnings {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #9a3412;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 12.5px;
+  margin-bottom: 16px;
+}
+.diff-warnings ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+.diff-counts {
+  display: flex;
+  gap: 14px;
+  font-size: 13px;
+  margin-bottom: 18px;
+}
+.diff-counts b {
+  font-size: 15px;
+}
+.diff-counts .add {
+  color: #15803d;
+}
+.diff-counts .mod {
+  color: #b45309;
+}
+.diff-counts .del {
+  color: #b91c1c;
+}
+.diff-counts .conf {
+  color: #7c2d12;
+}
+
+.diff-cat {
+  border: 1px solid var(--a-border);
+  border-radius: 10px;
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+.diff-cat > header {
+  background: #fafbfc;
+  padding: 10px 14px;
+  font-weight: 700;
+  border-bottom: 1px solid var(--a-border);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.diff-cat > header .admin-note {
+  font-weight: 400;
+}
+.diff-group {
+  padding: 8px 14px;
+}
+.diff-group h4 {
+  margin: 8px 0 4px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--a-muted);
+}
+.diff-row {
+  font-size: 12.5px;
+  padding: 4px 0;
+  border-bottom: 1px dashed #eef1f4;
+}
+.diff-row:last-child {
+  border-bottom: none;
+}
+.diff-row code {
+  background: #f3f4f6;
+  border-radius: 4px;
+  padding: 0 4px;
+}
+.diff-field {
+  color: var(--a-muted);
+  margin-left: 10px;
+}
+.diff-before {
+  color: #b91c1c;
+  text-decoration: line-through;
+}
+.diff-after {
+  color: #15803d;
+}
+.diff-row.added {
+  color: #15803d;
+}
+.diff-row.removed {
+  color: #b91c1c;
+}
+.diff-conflict {
+  background: #fff7ed;
+  border-left: 3px solid #f59e0b;
+  padding-left: 8px;
+}
+.diff-conflict .tag {
+  color: #9a3412;
+  font-weight: 700;
+  margin-left: 8px;
+}
+
+.import-actions {
+  position: sticky;
+  bottom: 0;
+  background: var(--a-bg);
+  padding: 14px 0;
+  margin-top: 8px;
+  border-top: 1px solid var(--a-border);
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.import-actions label {
+  font-size: 12.5px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.import-applied {
+  background: #dcfce7;
+  color: #166534;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+}

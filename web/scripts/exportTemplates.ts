@@ -16,7 +16,6 @@ try {
 }
 import ExcelJS from "exceljs";
 import { prisma } from "../lib/db";
-import { buildCatalogPayload } from "../lib/catalogPayload";
 
 const TYPE_LABEL: Record<string, string> = {
   nucleo: "Núcleo",
@@ -111,8 +110,6 @@ async function buildPlanes(): Promise<ExcelJS.Workbook> {
   for (const slug of CATALOG_ORDER) {
     const cat = bySlug.get(slug);
     if (!cat) continue;
-    const payload = await buildCatalogPayload(slug);
-    if (!payload) continue;
     const accent = argb(cat.accentColor);
 
     const ws = wb.addWorksheet(SHEET_NAME[slug] ?? slug, {
@@ -136,26 +133,42 @@ async function buildPlanes(): Promise<ExcelJS.Workbook> {
     ws.getColumn("cr").alignment = { horizontal: "center" };
     ws.autoFilter = { from: "A1", to: "G1" };
 
-    // real curriculum rows (drop the RequirementNode helper node — it lives in
-    // its own config sheet)
-    const rows = payload.courses
-      .filter((c) => c.placeholderKind !== "REQING")
+    // Curriculum rows straight from CatalogCourse — the "Prerrequisito" column is
+    // the *fallback* text (CatalogCourse.prereqText), which is what the importer
+    // diffs against; do NOT use the API-merged payload text here.
+    const rows = (
+      await prisma.catalogCourse.findMany({
+        where: { catalogId: cat.id },
+        orderBy: { sortIndex: "asc" },
+        select: {
+          displayCode: true,
+          name: true,
+          credits: true,
+          suggestedSemester: true,
+          courseType: true,
+          isPlaceholder: true,
+          prereqText: true,
+        },
+      })
+    )
       .map((c, i) => ({ c, i }))
-      .sort((a, b) => a.c.semester - b.c.semester || a.i - b.i)
+      .sort((a, b) => a.c.suggestedSemester - b.c.suggestedSemester || a.i - b.i)
       .map((x) => x.c);
 
     let r = 2;
-    const semesters = [...new Set(rows.map((c) => c.semester))].sort((a, b) => a - b);
+    const semesters = [
+      ...new Set(rows.map((c) => c.suggestedSemester)),
+    ].sort((a, b) => a - b);
     for (const sem of semesters) {
-      const group = rows.filter((c) => c.semester === sem);
+      const group = rows.filter((c) => c.suggestedSemester === sem);
       const first = r;
       for (const c of group) {
         const row = ws.addRow({
-          sem: c.semester,
-          code: c.code,
+          sem: c.suggestedSemester,
+          code: c.displayCode,
           name: c.name,
           cr: c.credits,
-          type: TYPE_LABEL[c.type] ?? c.type,
+          type: TYPE_LABEL[c.courseType] ?? c.courseType,
           prereq: c.prereqText || "",
           notes: "",
         });
