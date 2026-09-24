@@ -363,31 +363,55 @@ format for the P2 importer (not consumed by the current `seed.ts`).
   `pre-import` snapshots + job `applied`. DB restored afterwards. `npm run build`
   passes.
 
-**Infra — Postgres + Vercel preview (complete, verified locally).**
-- **Provider swap.** `schema.prisma` `provider = "postgresql"` + `directUrl =
-  env("DIRECT_URL")` (pooled URL for the app, direct URL for migrations — needed on
-  Neon/Vercel serverless). Models unchanged. The 7 SQLite migrations are archived
-  verbatim under `web/prisma/_archive_sqlite_migrations/` (outside Prisma's path);
-  `web/prisma/migrations/` now holds one squashed `*_init_postgres` (generated
-  offline via `prisma migrate diff --from-empty --to-schema-datamodel`).
-- **Local dev.** Root `docker-compose.yml` gains a `db` service (`postgres:16`,
-  named volume `pensum-pgdata`, `pensum/pensum/pensum`). `.env.example` / `.env`
-  now carry `DATABASE_URL` + `DIRECT_URL` Postgres strings; `SEED_DIR=".."`.
-- **Vercel.** New `vercel-build` script (`prisma generate && prisma migrate deploy
-  && next build`) so deploys apply migrations. Root dir = `web/` (dashboard
-  setting — no `vercel.json`). `generator client` gains `binaryTargets =
-  ["native","rhel-openssl-3.0.x"]` (Lambda runtime); `package.json` pins
-  `engines.node = "22.x"`. Set
-  `DATABASE_URL` (Neon pooled, `-pooler` host), `DIRECT_URL` (Neon direct),
-  `SESSION_SECRET`, `ADMIN_PASSWORD`, `OFFERINGS_TERM`, `UNIANDES_API_URL`,
-  `PUBLIC_BASE_URL`, `MIHORARIO_URL` in the project env.
-- **Raw SQL.** `scripts/inspect.ts` queries quoted for Postgres (camelCase idents,
-  `isPlaceholder = false`, `SUM(CASE …)`, `::int` casts). `lib/db.ts`
-  `applySqlitePragmas()` already self-guards on a `file:` URL → dormant no-op.
-- Verified locally against `postgres:16`: `migrate deploy` clean, `npm run seed`
-  → same counts as SQLite (iele-cbu3 28 auto / 5 not_offered, 51 electives),
-  `npm run build` passes, `/api/health` `{"ok":true,"db":"up"}`, picker + graph +
-  `/p/iele-cbu3` all 200. **Not yet run against the real Neon DB / deployed.**
+**Infra — Postgres + Vercel preview (superseded by MySQL below; kept for history).**
+- Had `schema.prisma` on `provider = "postgresql"` with a pooled `DATABASE_URL` +
+  direct `DIRECT_URL` (Neon/PgBouncer split), a squashed `*_init_postgres`
+  migration, a `postgres:16` docker-compose `db` service, and a `vercel-build`
+  script for Neon on Vercel. Verified working locally but **never run against
+  the real Neon DB / deployed** before the engine swap below.
+
+**Infra — MySQL swap (complete, verified locally).**
+- **Why.** University policy mandates MySQL — Postgres/Neon is out.
+- **Provider swap.** `schema.prisma` `provider = "mysql"`, single `DATABASE_URL`
+  (no `directUrl` — that split was Neon/PgBouncer-specific, MySQL doesn't need
+  it). Models unchanged, but free-text fields (course/elective names, prereq
+  expression text, descriptions, error/note strings) gained explicit
+  `@db.VarChar(500)` / `@db.Text` — Prisma defaults bare `String` to
+  `VARCHAR(191)` on MySQL (utf8mb4 index-length legacy), which would silently
+  truncate anything longer. The old Postgres migration is archived verbatim
+  under `web/prisma/_archive_postgres_migrations/` (outside Prisma's path,
+  alongside the earlier `_archive_sqlite_migrations/`); `web/prisma/migrations/`
+  now holds one fresh `20260924030026_init_mysql` (generated live via `prisma
+  migrate dev` against the local container, not offline-diffed like the
+  Postgres one was).
+- **Local dev.** Root `docker-compose.yml` `db` service is now `mysql:8.4`
+  (named volume `pensum-mysqldata`, user/db `pensum/pensum/pensum`, root pw
+  `pensum`), healthcheck via `mysqladmin ping`. Note: `mysql:8.4` **dropped**
+  the `--default-authentication-plugin` flag (used on 8.0) — omit it, don't
+  resurrect it. `.env.example` / `.env` now carry one MySQL `DATABASE_URL`
+  (`mysql://pensum:pensum@localhost:3306/pensum`). `prisma migrate dev` needs a
+  shadow DB, so the `pensum` user needs `CREATE`/`DROP DATABASE` — the default
+  compose grant only covers the `pensum` schema, so a fresh container needs
+  `GRANT ALL PRIVILEGES ON *.* TO 'pensum'@'%'` run once via `docker compose exec
+  db mysql -uroot -ppensum -e "..."` before the first `prisma migrate dev`
+  (`prisma migrate deploy` in normal/CI use doesn't need this).
+- **Vercel / prod hosting is still open.** The `vercel-build` script and Vercel
+  env vars are unchanged in shape (`DATABASE_URL` + the rest) but now need to
+  point at a real hosted MySQL (PlanetScale, RDS, self-hosted, etc. — not yet
+  chosen); `DIRECT_URL` is no longer read anywhere and can be dropped from the
+  Vercel project env whenever convenient. Not yet deployed against a prod MySQL.
+- **Raw SQL.** `scripts/inspect.ts` rewritten for MySQL (backtick-free
+  unquoted camelCase idents — MySQL is case-preserving but not
+  case-sensitive on identifiers by default, unlike Postgres's `"quoted"` —
+  `CAST(... AS SIGNED)` instead of `::int`). Aggregate `COUNT`/`SUM` come back
+  as `BigInt` over `$queryRawUnsafe` on MySQL (prints as `28n` in
+  `console.table`) — cosmetic, dev-only script, not fixed.  `lib/db.ts`
+  `applySqlitePragmas()` still self-guards on a `file:` URL → dormant no-op.
+- Verified locally against `mysql:8.4`: `prisma migrate dev` clean, `npm run
+  seed` → identical counts to the Postgres run (iele-cbu3 28 auto / 5
+  not_offered, 51 electives), `npm run build` passes, `npm run dev` smoke-tested
+  — `/api/health` `{"ok":true,"db":"up"}`, `/api/catalogs`, `/p/iele-cbu3` (200),
+  and the admin login → authed `/administrador` (200) all work end-to-end.
 
 ## Next
 
@@ -419,14 +443,17 @@ target now — this is for self-hosting parity.)
   dev server starts 500ing; restart dev after any build.
 - `scripts/*.ts` need `web/.env` — seed/inspect call `process.loadEnvFile()` when
   `DATABASE_URL` is unset; the Next app loads `.env` itself. `.env` is gitignored;
-  for local dev copy `.env.example` (its default `DATABASE_URL`/`DIRECT_URL` point
-  at the docker-compose `db` — `docker compose up -d db` first) or paste the Neon
-  strings.
-- Postgres needs both `DATABASE_URL` (pooled) and `DIRECT_URL` (direct). On Neon
-  they differ by host (`-pooler` vs not); locally they're identical. `prisma
-  migrate` / `db:studio` use `DIRECT_URL`; the running app uses `DATABASE_URL`.
-- Old SQLite migrations live in `web/prisma/_archive_sqlite_migrations/` (reference
-  only — Prisma ignores it). Never re-add them to `web/prisma/migrations/`.
+  for local dev copy `.env.example` (its default `DATABASE_URL` points at the
+  docker-compose `db` — `docker compose up -d db` first).
+- MySQL, one `DATABASE_URL` — no pooled/direct split (that was Neon/PgBouncer-only,
+  removed with the Postgres→MySQL swap, see Infra above).
+- `prisma migrate dev` (not `db:deploy`) needs a MySQL user that can create/drop a
+  shadow DB. On a fresh container this needs a one-time
+  `GRANT ALL PRIVILEGES ON *.* TO 'pensum'@'%'` as root (see Infra above) —
+  otherwise it fails with P3014. Not needed for plain `db:deploy` (CI/prod path).
+- Old SQLite migrations live in `web/prisma/_archive_sqlite_migrations/`, old
+  Postgres migration in `web/prisma/_archive_postgres_migrations/` (reference
+  only — Prisma ignores both). Never re-add either to `web/prisma/migrations/`.
 - Seeding now makes ~2 API calls per offered course (`/api/courses` +
   `/api/courseDetails`); still well under the abort threshold with concurrency 4 +
   the per-run cache. `SEED_SKIP_DETAILS=1` pulls offerings only.
@@ -438,9 +465,14 @@ target now — this is for self-hosting parity.)
   fresh build = delete `web/prisma/dev.db*` then `npm run seed`.
 - Legacy SQLite note (kept — schema still follows it): `Json @default("[]")` emitted
   broken DDL on SQLite, so all JSON columns are nullable `Json?` and code treats
-  null as `[]`. Fine to keep on Postgres.
+  null as `[]`. Fine to keep on MySQL too.
 - `lib/db.ts` `applySqlitePragmas()` no-ops unless `DATABASE_URL` starts with
-  `file:` — dormant on Postgres, left in place for a possible SQLite fallback.
+  `file:` — dormant on MySQL, left in place for a possible SQLite fallback.
+- MySQL defaults bare `String` fields to `VARCHAR(191)` (Prisma's utf8mb4
+  index-length default) — long free text (names, prereq expressions,
+  descriptions, error/note strings) is annotated `@db.VarChar(500)` /
+  `@db.Text` in `schema.prisma`. Any *new* `String` field meant to hold more
+  than ~191 chars needs the same treatment or MySQL will silently truncate it.
 - The "con Precálculo" sheets have stale `SEM n` column markers (off by one vs the
   "Quinto Semestre" section headers). Parser trusts the section headers; mismatches
   become non-blocking warnings surfaced in the (future) admin validation report.

@@ -28,9 +28,9 @@ This unlocks a re-scope the team wants:
 | Area | Decision |
 |---|---|
 | Stack | **Next.js (App Router) full-stack, TypeScript.** One app: student UI + `/administrador` + API routes + server-side Excel parsing + server-side pairing. Drop the product doc's Python/FastAPI stack. |
-| DB | ~~SQLite on a mounted Docker volume~~ → **Postgres via Prisma** (the planned swap happened — see PROGRESS.md "Infra"). **Neon** for the Vercel preview, local `docker-compose` `db` for dev. `DATABASE_URL` (pooled) + `DIRECT_URL` (direct, for migrations). |
+| DB | ~~SQLite on a mounted Docker volume~~ → ~~Postgres via Prisma (Neon)~~ → **MySQL via Prisma** (university policy mandates MySQL — see PROGRESS.md "Infra — MySQL swap"). Single `DATABASE_URL`, local `docker-compose` `db` for dev. Prod hosting (PlanetScale / RDS / self-hosted) not yet chosen. |
 | "See the classes" | **Link out to Mi-Horario only.** Student panel shows offering *badges* (offered? / #sections / seats / attrs / 8A-8B-16wk) from the pairing, plus a configurable deep link. No sections list, no calendar. |
-| Deployment | **Vercel** (Neon Postgres) is the primary target for the shared preview. Dockerfile + `docker-compose` kept for self-hosting parity (P3). |
+| Deployment | **Vercel** is the primary target for the shared preview, against a hosted MySQL (TBD — was Neon Postgres, superseded by the MySQL policy). Dockerfile + `docker-compose` kept for self-hosting parity (P3). |
 | Admin auth (v1) | Single shared `ADMIN_PASSWORD` + `SESSION_SECRET`-signed httpOnly cookie, enforced by `middleware.ts`. Behind an `AuthProvider` interface so OIDC can replace it later. |
 | Multi-variant | The Excel's 5 sheets → 5 selectable **catalogs**. Student picks one from a menu. `suggestedSemester` is a first-class per-catalog attribute of each course. |
 
@@ -435,10 +435,12 @@ Every mutating handler writes an `AuditLog` row.
 
 ## G. Docker & config
 
-> **Superseded for the shared preview:** deploy is Vercel + Neon Postgres now.
-> The root `docker-compose.yml` today runs only a local `db` (Postgres). The
-> Dockerfile / `web` + `seed` compose services below are P3 self-hosting work,
-> now targeting that same Postgres instead of an SQLite volume.
+> **Superseded twice:** the shared-preview deploy was Vercel + Neon Postgres,
+> now Vercel + MySQL (university policy — see PROGRESS.md "Infra — MySQL
+> swap"; prod MySQL host still TBD). The root `docker-compose.yml` today runs
+> only a local `db` (MySQL). The Dockerfile / `web` + `seed` compose services
+> below are P3 self-hosting work, now targeting that same MySQL instead of an
+> SQLite volume.
 
 **`web/Dockerfile`** (multi-stage):
 1. `deps` — `node:22-alpine`; `COPY package*.json`; `npm ci`.
@@ -459,8 +461,7 @@ volume `pensum-data:/data`); `seed` service (same image, `profiles:["seed"]`, mo
 
 | Var | Purpose | Example / default |
 |---|---|---|
-| `DATABASE_URL` | Postgres, pooled connection (app runtime) | `postgresql://…-pooler.../pensum?sslmode=require` |
-| `DIRECT_URL` | Postgres, direct connection (`prisma migrate`) | `postgresql://….../pensum?sslmode=require` |
+| `DATABASE_URL` | MySQL connection (app runtime + `prisma migrate`) | `mysql://user:pass@host:3306/pensum` |
 | `SESSION_SECRET` | admin cookie signing key | (random 32B) |
 | `ADMIN_PASSWORD` | single shared admin password | — |
 | `OFFERINGS_TERM` | default pairing term | `202620` |

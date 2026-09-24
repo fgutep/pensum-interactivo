@@ -1,12 +1,10 @@
 // Pensum app data model — see /home/felipe/.claude/plans/since-we-can-indeed-structured-gadget.md §B
-// Postgres: Neon (Vercel preview) in the cloud, a local docker-compose `db` service for dev.
-//   DATABASE_URL — pooled connection (PgBouncer on Neon); used by the app at runtime.
-//   DIRECT_URL   — direct connection; used by `prisma migrate` / introspection only.
+// MySQL (university policy): a local docker-compose `db` service for dev.
+//   DATABASE_URL — the only connection string needed; used by both the app and `prisma migrate`.
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "mysql"
+  url      = env("DATABASE_URL")
 }
 
 generator client {
@@ -51,7 +49,7 @@ model RequirementNode {
   catalogId         Int
   key               String // stable slug, e.g. "req-lectura-ingles"
   label             String
-  description       String?
+  description       String?  @db.Text
   infoUrl           String?
   credits           Float    @default(0)
   semester          Int // which column it sits under
@@ -75,13 +73,13 @@ model RequirementNode {
 model Course {
   id             Int      @id @default(autoincrement())
   normalizedCode String   @unique // "IELE2100"
-  nameEs         String
-  nameEn         String?
+  nameEs         String   @db.VarChar(500)
+  nameEn         String?  @db.VarChar(500)
   defaultCredits Float?
   createdAt      DateTime @default(now())
   // --- catalog description, from the smartcatalogiq scraper (scripts/scrapeDescriptions.ts).
   //     Admin-editable; the seed never touches these. ---
-  description        String?
+  description        String?   @db.Text
   descriptionUrl    String?
   descriptionSyncedAt DateTime?
 
@@ -95,7 +93,7 @@ model CatalogCourse {
   catalogId         Int
   courseId          Int? // null for an unbound placeholder
   displayCode       String // raw Excel col1: "IELE 2100" | "CBU" | "ELECTIVA IELE" | "IELE 301X"
-  name              String
+  name              String  @db.VarChar(500)
   credits           Float
   suggestedSemester Int
   courseType        String // nucleo|electiva|cbu|complementaria|proyecto
@@ -103,8 +101,8 @@ model CatalogCourse {
   placeholderKind   String? // CBU|ELECTIVA|EFI|CLE|DEPT|CODEX|CI
   placeholderLabel  String?
   sortIndex         Int // sheet row order within catalog (stable slot key)
-  prereqText        String?
-  coreqText         String?
+  prereqText        String? @db.Text
+  coreqText         String? @db.Text
   prereqTree        Json? // ReqNode | null — consumed as-is by lib/availability.ts
   coreqTree         Json?
   pairingStatus     String  @default("needs_manual")
@@ -131,7 +129,7 @@ model CourseOffering {
   courseId          Int
   term              String
   offered           Boolean
-  canonicalTitle    String?
+  canonicalTitle    String? @db.VarChar(500)
   canonicalCredits  Float?
   sectionCount      Int      @default(0)
   seatsAvailableMin Int?
@@ -145,14 +143,14 @@ model CourseOffering {
   //     when present; the PRERREQUISITOS .xlsx is the fallback for courses with
   //     no offering this term) ---
   detailsNrc      String? // NRC the details were read from
-  apiPrereqText   String? // raw Spanish boolean expression
+  apiPrereqText   String? @db.Text // raw Spanish boolean expression
   apiPrereqTree   Json? // ReqNode | null  (parsed apiPrereqText)
   apiCoreq        Json? // [{subject,coursenumber,title,normalizedCode}]
   apiCoreqTree    Json? // ReqNode | null  (AND of apiCoreq normalizedCodes)
   restrictions    Json? // [{type,ind,desc[]}] — informational only, never blocks
   detailsCompl    Json? // raw `compl` array (unused for now)
   detailsMaster   Json? // raw `master` array (unused for now)
-  detailsError    String? // set when the courseDetails fetch failed
+  detailsError    String? @db.Text // set when the courseDetails fetch failed
   detailsSyncedAt DateTime?
 
   course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
@@ -166,14 +164,14 @@ model ManualPairing {
   id                Int       @id @default(autoincrement())
   catalogCourseId   Int       @unique
   excelCode         String
-  excelName         String
+  excelName         String  @db.VarChar(500)
   excelCredits      Float?
   excelSemester     Int?
-  excelPrereqText   String?
+  excelPrereqText   String? @db.Text
   suggestedCode     String?
   candidateCodes    Json? // string[] (placeholder pools)
   resolvedCode      String?
-  resolvedNote      String?
+  resolvedNote      String? @db.Text
   keepAsPlaceholder Boolean   @default(false)
   resolvedBy        String?
   resolvedAt        DateTime?
@@ -220,7 +218,7 @@ model CatalogSnapshot {
 /// pensum eras. Indexed separately for Ing. Eléctrica (IELE) vs Electrónica (IELC).
 model Elective {
   id             Int      @id @default(autoincrement())
-  name           String // long course name, as printed
+  name           String   @db.VarChar(500) // long course name, as printed
   normalizedName String   @unique // accent-folded, upper, space-collapsed
   code           String? // paired course code if ever resolved (left null for now)
   level          String // "pregrado" | "maestria" | "other"

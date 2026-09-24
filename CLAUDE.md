@@ -1,9 +1,9 @@
 # Custom_Pensum
 
 Interactive curriculum ("pensum") app for Uniandes Ingeniería Eléctrica / Electrónica.
-Being re-scoped from a static Vite SPA into a Next.js full-stack app (Postgres DB via
-Prisma — Neon in the cloud, local docker-compose for dev — `/administrador` panel,
-live pairing against the Uniandes course API). Deploys to Vercel.
+Being re-scoped from a static Vite SPA into a Next.js full-stack app (MySQL DB via
+Prisma — university policy mandates MySQL; local docker-compose for dev — `/administrador`
+panel, live pairing against the Uniandes course API). Deploys to Vercel.
 
 ## Where things stand
 
@@ -19,13 +19,14 @@ what's next (P2 admin, P3 Docker), and the gotchas.
 - `app/` — the original Vite SPA, kept as migration reference until P1 is signed off, then deleted
 - `PENSUMS PREGRADO (DOCUMENTO BASE)) CBU3.xlsx`, `PRERREQUISITOS TODOS 202620.xlsx` — source data the seed/import reads
 - `pensum-interactivo-product-doc.md` — earlier product doc (its Python/Postgres stack is superseded; see `.claude/PLAN.md`)
+- DB engine: MySQL (Prisma), per university policy — see the "Infra — MySQL" entry in `.claude/PROGRESS.md`
 
 ## Quick start
 
 ```bash
-docker compose up -d db   # local Postgres (repo root); Neon needs no local container
+docker compose up -d db   # local MySQL (repo root)
 cd web
-cp .env.example .env  # then fill in DATABASE_URL / DIRECT_URL (Neon) + secrets
+cp .env.example .env  # then fill in DATABASE_URL + secrets
 npm install          # then: npx prisma generate  (postinstall is sandboxed here)
 npm run db:deploy    # apply migrations
 npm run seed         # first load: DB from the two .xlsx + course API (~60s).

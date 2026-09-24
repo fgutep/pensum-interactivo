@@ -11,10 +11,10 @@ async function main() {
     { slug: string; mn: number; mx: number; n: number; ph: number }[]
   >(
     `SELECT c.slug,
-            MIN(cc."suggestedSemester")::int mn, MAX(cc."suggestedSemester")::int mx,
-            COUNT(*)::int n,
-            SUM(CASE WHEN cc."isPlaceholder" THEN 1 ELSE 0 END)::int ph
-       FROM "CatalogCourse" cc JOIN "Catalog" c ON c.id = cc."catalogId"
+            CAST(MIN(cc.suggestedSemester) AS SIGNED) mn, CAST(MAX(cc.suggestedSemester) AS SIGNED) mx,
+            CAST(COUNT(*) AS SIGNED) n,
+            CAST(SUM(CASE WHEN cc.isPlaceholder THEN 1 ELSE 0 END) AS SIGNED) ph
+       FROM CatalogCourse cc JOIN Catalog c ON c.id = cc.catalogId
       GROUP BY c.slug ORDER BY c.slug`
   );
   console.log("\n== catalogs ==");
@@ -23,10 +23,10 @@ async function main() {
   const pairing = await prisma.$queryRawUnsafe<
     { slug: string; pairingStatus: string; n: number }[]
   >(
-    `SELECT c.slug, cc."pairingStatus", COUNT(*)::int n
-       FROM "CatalogCourse" cc JOIN "Catalog" c ON c.id = cc."catalogId"
-      WHERE cc."isPlaceholder" = false
-      GROUP BY c.slug, cc."pairingStatus" ORDER BY c.slug, cc."pairingStatus"`
+    `SELECT c.slug, cc.pairingStatus, CAST(COUNT(*) AS SIGNED) n
+       FROM CatalogCourse cc JOIN Catalog c ON c.id = cc.catalogId
+      WHERE cc.isPlaceholder = false
+      GROUP BY c.slug, cc.pairingStatus ORDER BY c.slug, cc.pairingStatus`
   );
   console.log("\n== pairing status (real courses only) ==");
   console.table(pairing);
