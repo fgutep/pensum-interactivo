@@ -389,6 +389,60 @@ format for the P2 importer (not consumed by the current `seed.ts`).
   `npm run build` passes, `/api/health` `{"ok":true,"db":"up"}`, picker + graph +
   `/p/iele-cbu3` all 200. **Not yet run against the real Neon DB / deployed.**
 
+**Session 2026-09-24 — click-selection fix, Mauricio's JSON pensum exports reconciled + applied to prod, masters catalogs added.**
+- **Bug fix (`MapCanvas.tsx`).** The hover-dimming flicker fix (same session,
+  earlier commit) had added `selectable: false` to `courseCard` nodes on top
+  of the pre-existing `draggable: false`. React Flow derives a node's CSS
+  `pointer-events` from `isSelectable || isDraggable || onNodeClick || ...`
+  (the top-level `<ReactFlow>` handler props — none of which this app sets,
+  since clicks/hover go through `data.onClick`/`data.onHover` on the
+  `CourseCard` button instead). With both false, React Flow set
+  `pointer-events: none` on the whole node, silently swallowing clicks.
+  Removed the stray flag. Pushed to `main` (`5a98659`) and mirrored via PR to
+  `fg-edu-tep/pensum-interactivo#1` (the fork Vercel deploys from).
+- **`electivas/{iele,ielc,m-iele,m-maia}.json`** — new source files: exports
+  from a platform the coordinator (Mauricio) is piloting, richer than the
+  `.xlsx` pipeline (stable rule IDs, `course`/`pool`/`group` rule types,
+  precise elective code ranges instead of free-text names). Added to the
+  repo as source data alongside the existing `.xlsx` files.
+- **Trust hierarchy defined and applied:** live Uniandes API > this JSON >
+  legacy `.xlsx`, with case-by-case overrides where corroborating evidence
+  disagreed (full reasoning + every verified conflict in
+  `~/.claude/projects/.../memory/electivas-json-trust-hierarchy.md`). Found
+  and fixed one real bug in our own `PENSUMS PREGRADO` sheet (`ielc-cbu3`'s
+  semester-6 slot was coded `IELE3106` — Electrónica de Potencia — but should
+  have been `IELE3200` — Electrónica Análoga) and one stale course code
+  (`IELE2150` → `IELE2110`, confirmed via a live API pull that the old code
+  no longer exists). Also caught JSON-side errors (wrong credits on
+  `IELE3106`/`IELE1200`/`IELE2202`, an internal inconsistency between
+  `iele.json` and `ielc.json` on `IELE1200`'s credits, and an impossible
+  term-1 placement for `MATE2210` given its own prerequisite chain) — none of
+  those were applied.
+- **Applied directly to the Neon production DB** (ad-hoc scripts run via the
+  Vercel-linked project + `vercel env pull`, not yet a real importer —
+  `CatalogSnapshot` written per catalog first, `AuditLog` entry per change,
+  actor `claude-code:*`): 3 new `Course` rows (`MATE2301`, `IELE3200`,
+  `IELE2110`), 13 `CatalogCourse` rebinds across all 5 CBU3 catalogs
+  (`manuallyEdited: true` so a future re-seed won't touch them), 7 stale
+  `ManualPairing` rows dropped. One item deliberately left `needs_manual`:
+  `doble-cbu3`'s `IELE 1X18` slot — a genuine either/or between
+  `IELE1118`/`IELE1218` for the combined program that no source resolves.
+- **Two new published catalogs**, built straight from the JSON since neither
+  existed before (pure addition — nothing to conflict with): `m-iele`
+  (Maestría en Ingeniería Eléctrica, id 6, 40cr, 6 rows) and `m-maia`
+  (Maestría en Inteligencia Artificial, id 7, 36cr, 12 rows). Both credit
+  sums verified exact against `program.totalCredits`. `accentColor`/
+  `tagline`/`imagePath` left null — no design pass done, so their picker
+  cards render plain until that happens.
+- **Schema gap surfaced, not yet built:** the JSON's `pool` (elective by
+  code-range, e.g. `IELE-3230:3299`) and `group` (`"choose 2 of 3"`) rule
+  types have no first-class `CatalogCourse` equivalent. Every pool/group in
+  this session was represented as one descriptive `ELECTIVA`/`CLE`
+  placeholder row carrying its aggregate credit target + range in
+  `placeholderLabel` (same convention as the existing pregrado "Electivas de
+  Programa" pools) — workable, but loses precision a real importer should
+  capture structurally. See "Next" below.
+
 ## Next
 
 **P2.2 — direct editors** (DB-authoritative CRUD): catalog identity + `Catalog.rules`
@@ -404,6 +458,16 @@ reorder, `manuallyEdited` + per-field `lockedFields`); `RequirementNode` CRUD;
 passthrough + a details-only re-pull.
 
 **P2.5 — snapshots/rollback + `AuditLog` viewer.**
+
+**Real JSON importer for `electivas/*.json`.** Today's application to prod
+was hand-scripted (see 2026-09-24 session above). A proper path needs:
+schema support for `pool` (code-range elective) and `group` (N-of-M) rules
+— today both get flattened into one descriptive placeholder row, losing
+structure — plus the field-level trust-hierarchy resolution (live API > JSON
+> xlsx) wired into `persistCatalog.ts`/`applyPlanes.ts`'s existing diff/apply
+flow instead of a one-off script, so future re-exports from Mauricio's
+platform go through the same reviewable `ImportJob` path as a `.xlsx`
+upload.
 
 **P3 — Docker.** Multi-stage `web/Dockerfile` (`output: "standalone"`, non-root,
 `prisma migrate deploy` on start, healthcheck). Extend the root `docker-compose.yml`
@@ -446,3 +510,15 @@ target now — this is for self-hosting parity.)
   become non-blocking warnings surfaced in the (future) admin validation report.
 - npm here has a `allow-scripts` wrapper that blocks postinstall; `prisma generate`
   is wired into `npm run build`, run it manually after a fresh `npm install`.
+- **Querying/writing the real Neon DB from this machine:** the Vercel project
+  is `fg-edu-teps-projects/pensum` (not under the `fgutep` personal account —
+  `vercel login`/`vercel link` need the `fg-edu-tep` account). `vercel env
+  pull` only has `DATABASE_URL`/`DIRECT_URL` under the **Production**
+  environment (Development has none). `schema.prisma`'s datasource is
+  currently a local-only MySQL override (see the comment at the top of the
+  file, "not committed") to work around a local Prisma-engine auth bug on
+  Windows — to talk to Neon, temporarily flip it back to `postgresql` +
+  `env("DATABASE_URL")`/`env("DIRECT_URL")`, `prisma generate`, do the work,
+  then flip it back and `prisma generate` again. Neon's serverless compute
+  scales to zero when idle — a "Can't reach database server" on the first
+  query after a pause is normal, just retry once.

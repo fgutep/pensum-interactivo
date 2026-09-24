@@ -18,3 +18,5 @@ web/prisma/*.db-*
 .~lock.*#
 .DS_Store
 *.log
+.vercel
+.env*.local
