@@ -17,6 +17,7 @@ import { upstreamOf, downstreamOf, unlockRelation } from "@/lib/availability";
 import { numberRequirementGroups } from "./reqGroups";
 import { toSentenceCase } from "./format";
 import CourseCard, { type RelationState } from "./CourseCard";
+import UnlockViewControl, { type UnlockView } from "./UnlockViewControl";
 import { PlusIcon, MinusIcon, FitIcon } from "./icons";
 import styles from "./explorer.module.css";
 
@@ -143,6 +144,9 @@ interface Props {
   justUnlockedIds: Set<string>;
   quickMode: boolean;
   relaciones: RelacionesMode;
+  /** what to show of the FORWARD direction (dependents). Off by default. */
+  unlockView: UnlockView;
+  onUnlockViewChange: (v: UnlockView) => void;
   panelOpen: boolean;
   onSelect: (id: string) => void;
   onHover: (id: string | null) => void;
@@ -161,6 +165,8 @@ export default function MapCanvas({
   justUnlockedIds,
   quickMode,
   relaciones,
+  unlockView,
+  onUnlockViewChange,
   panelOpen,
   onSelect,
   onHover,
@@ -254,10 +260,22 @@ export default function MapCanvas({
   // edge preview + tooltip above, but must not touch these (a changed set
   // identity rebuilds every card's data). With no selection they collapse to
   // one shared constant so the nodes memo below stays put while hovering.
+  // What the user asked to SEE of the forward direction. "off" hides every
+  // dependent — ring, edge and un-dimming; "sole" keeps only the dependents this
+  // course unlocks BY ITSELF; "all" shows every dependent plus the whole chain.
+  const unlockShown = useMemo(() => {
+    if (unlockView === "off") return EMPTY_MAP;
+    if (unlockView === "all") return unlockById;
+    const m = new Map<string, RelationState>();
+    for (const [id, rel] of unlockById) if (rel === "unlockSole") m.set(id, rel);
+    return m;
+  }, [unlockView, unlockById]);
+  const downstreamShown = useMemo(() => (unlockView === "all" ? downstream : EMPTY_SET), [unlockView, downstream]);
+
   const selUpstream = useMemo(() => (selectedId ? upstreamAll : EMPTY_SET), [selectedId, upstreamAll]);
-  const selDownstream = useMemo(() => (selectedId ? downstream : EMPTY_SET), [selectedId, downstream]);
+  const selDownstream = useMemo(() => (selectedId ? downstreamShown : EMPTY_SET), [selectedId, downstreamShown]);
   const selDirectAncestors = useMemo(() => (selectedId ? directAncestors : EMPTY_SET), [selectedId, directAncestors]);
-  const selUnlockById = useMemo(() => (selectedId ? unlockById : EMPTY_MAP), [selectedId, unlockById]);
+  const selUnlockById = useMemo(() => (selectedId ? unlockShown : EMPTY_MAP), [selectedId, unlockShown]);
   const selCoreqNeighbors = useMemo(() => (selectedId ? coreqNeighbors : EMPTY_SET), [selectedId, coreqNeighbors]);
 
   // requirement numbers for the SELECTED course's direct ancestors (CARD-07/08)
@@ -343,6 +361,7 @@ export default function MapCanvas({
           else if (selUnlockById.has(course.id)) relation = selUnlockById.get(course.id)!;
           else if (selDirectAncestors.has(course.id)) relation = "directPrereq";
           else if (relaciones === "cadena" && selUpstream.has(course.id)) relation = "chainIndirectFull";
+          else if (selDownstream.has(course.id)) relation = "downstream";
         }
 
         const isDimmed =
@@ -404,13 +423,18 @@ export default function MapCanvas({
     const isHoverPreview = !selectedId;
     const ancestorSet = !isHoverPreview && relaciones === "cadena" ? upstreamAll : directAncestors;
     const inAncestorEdges = (id: string) => id === focusId || ancestorSet.has(id);
+    const inForward = (id: string) => id === focusId || downstream.has(id);
 
     const out: Edge[] = [];
     for (const c of courses) {
       for (const prereqId of c.prereqCourseIds) {
-        const touchesFocus = c.id === focusId || prereqId === focusId;
+        // forward edges (focus -> dependent) only exist for what the user asked
+        // to see; upstream edges (prerequisites of the focus) always do
+        const forwardShown = prereqId === focusId && unlockShown.has(c.id);
+        const touchesFocus = c.id === focusId || forwardShown;
         const withinChain = !isHoverPreview && relaciones === "cadena" && inAncestorEdges(c.id) && inAncestorEdges(prereqId);
-        if (!touchesFocus && !withinChain) continue;
+        const withinForward = !isHoverPreview && unlockView === "all" && inForward(c.id) && inForward(prereqId);
+        if (!touchesFocus && !withinChain && !withinForward) continue;
 
         const isDirect = prereqId === focusId || c.id === focusId;
         // "*" prerequisites (can be taken the same term) read as corequisites:
@@ -436,7 +460,7 @@ export default function MapCanvas({
           });
           continue;
         }
-        const unlockRel = prereqId === focusId ? unlockById.get(c.id) : null;
+        const unlockRel = prereqId === focusId ? unlockShown.get(c.id) : null;
         const color = unlockRel === "unlockSole" ? UNLOCK_SOLE_COLOR : unlockRel === "unlockAmong" ? UNLOCK_AMONG_COLOR : isDirect ? PREREQ_COLOR : CHAIN_COLOR;
         out.push({
           id: `${prereqId}->${c.id}`,
@@ -459,7 +483,7 @@ export default function MapCanvas({
       }
     }
     return out;
-  }, [courses, focusId, selectedId, relaciones, upstreamAll, directAncestors, unlockById, PREREQ_COLOR, CHAIN_COLOR, COREQ_COLOR, UNLOCK_SOLE_COLOR, UNLOCK_AMONG_COLOR]);
+  }, [courses, focusId, selectedId, relaciones, unlockView, upstreamAll, downstream, directAncestors, unlockShown, PREREQ_COLOR, CHAIN_COLOR, COREQ_COLOR, UNLOCK_SOLE_COLOR, UNLOCK_AMONG_COLOR]);
 
   const [selectionSummary, setSelectionSummary] = useState("");
   useEffect(() => {
@@ -480,6 +504,14 @@ export default function MapCanvas({
       setSelectionSummary(`${chainCount} requisito${chainCount === 1 ? "" : "s"} en la cadena · ${directCount} directo${directCount === 1 ? "" : "s"}`);
     }
   }, [selected, unlockById, relaciones, upstreamAll]);
+
+  // the "niche" question: how much of the pensum leans on this course
+  const relevance =
+    unlockView === "all" && selected
+      ? downstream.size === 0
+        ? "Nada depende de ella."
+        : `Relevante para ${downstream.size} curso${downstream.size === 1 ? "" : "s"} del pensum.`
+      : "";
 
   // MAP-05: fade + pan-to-hidden-semester chips at each edge that's cut off.
   const semesterCount = useMemo(() => new Set(courses.map((c) => c.semester)).size, [courses]);
@@ -531,7 +563,11 @@ export default function MapCanvas({
       {selected && (
         <div className={styles.selectionBar}>
           <span className={styles.selectionCode}>{selected.code}</span>
-          <span className={styles.selectionSummary}>{selectionSummary}</span>
+          <span className={styles.selectionSummary}>
+            {selectionSummary}
+            {relevance && ` · ${relevance}`}
+          </span>
+          <UnlockViewControl value={unlockView} onChange={onUnlockViewChange} />
           <button className={styles.selectionClear} onClick={() => onSelect("")}>
             Limpiar Esc
           </button>

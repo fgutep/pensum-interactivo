@@ -24,7 +24,18 @@ view (`/v1`) is untouched and shares none of this.
    re-theme is a one-file change. There is one green (`--st-ok`) and one amber
    (`--st-warn`); edge colors are read from `--edge-prereq` / `--edge-coreq` at
    runtime (`useEdgeColors` in `MapCanvas.tsx`).
-4. **Quiet by default in Mi avance.** An available course is the default, so it
+4. **What a course unlocks is opt-in.** A student deciding what to take cares
+   about what they NEED first; the forward direction (and partial unlocks
+   especially) is a second, noisier question. The `Desbloqueos` preference is
+   **off by default**, persisted per browser, and has two named levels:
+   *Único requisito* (cleaner — only dependents this course unlocks by itself,
+   solid green) and *Todo el pensum* (niche — "how relevant is this course?":
+   every dependent, partial ones in amber, plus the whole forward chain in a
+   neutral ring and a "relevante para N cursos" count). Off hides rings, edges
+   and un-dimming for dependents; the side panel's textual "Desbloquea" stays.
+   (This supersedes the meeting's forward-chain-always-on contrast, D-5, as the
+   default; the behaviour is still one click away.)
+5. **Quiet by default in Mi avance.** An available course is the default, so it
    gets no mark — no green ring on every available card. State is carried by
    the card itself: approved = green fill + check, in the basket = a term pill
    (e.g. "2027-1"), blocked = hatching, administrative rule = amber lock.

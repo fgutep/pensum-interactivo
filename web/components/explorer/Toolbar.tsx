@@ -4,6 +4,7 @@ import type { CourseGroup } from "./format";
 import { GROUP_LABEL, groupColor } from "./format";
 import styles from "./explorer.module.css";
 import type { RelacionesMode } from "./MapCanvas";
+import { UnlockViewMenu, type UnlockView } from "./UnlockViewControl";
 
 const EXPLORE_GROUPS: { group: CourseGroup; dashed: boolean }[] = [
   { group: "iele", dashed: false },
@@ -28,6 +29,8 @@ interface Props {
   onToggleGroup: (g: CourseGroup) => void;
   relaciones: RelacionesMode;
   onRelacionesChange: (r: RelacionesMode) => void;
+  unlockView: UnlockView;
+  onUnlockViewChange: (v: UnlockView) => void;
   statusCounts: Record<StatusFilter, number>;
   hiddenStatuses: Set<StatusFilter>;
   onToggleStatus: (s: StatusFilter) => void;
@@ -42,6 +45,8 @@ export default function Toolbar({
   onToggleGroup,
   relaciones,
   onRelacionesChange,
+  unlockView,
+  onUnlockViewChange,
   statusCounts,
   hiddenStatuses,
   onToggleStatus,
@@ -99,6 +104,10 @@ export default function Toolbar({
             Toda la cadena
           </button>
         </div>
+        <div className={styles.vDivider} />
+        <div data-tour="unlocks">
+          <UnlockViewMenu value={unlockView} onChange={onUnlockViewChange} />
+        </div>
         <div className={styles.edgeLegend} data-tour="legend">
           <span className={styles.legendSample}>
             <svg width="20" height="8" aria-hidden>
@@ -113,6 +122,24 @@ export default function Toolbar({
             </svg>
             Correquisito
           </span>
+          {unlockView !== "off" && (
+            <span className={styles.legendSample} title="Aprobar el curso seleccionado basta para poder ver este.">
+              <svg width="20" height="8" aria-hidden>
+                <line x1="1" y1="4" x2="14" y2="4" stroke="var(--st-ok)" strokeWidth="2" />
+                <path d="M14 1 L19 4 L14 7 Z" fill="var(--st-ok)" />
+              </svg>
+              Único requisito
+            </span>
+          )}
+          {unlockView === "all" && (
+            <span className={styles.legendSample} title="El curso seleccionado es uno de varios requisitos: ayuda, pero no basta.">
+              <svg width="20" height="8" aria-hidden>
+                <line x1="1" y1="4" x2="14" y2="4" stroke="var(--st-warn)" strokeWidth="2" />
+                <path d="M14 1 L19 4 L14 7 Z" fill="var(--st-warn)" />
+              </svg>
+              Uno de varios
+            </span>
+          )}
         </div>
       </div>
     );

@@ -13,6 +13,7 @@ export type RelationState =
   | "chainIndirectFull"
   | "unlockSole"
   | "unlockAmong"
+  | "downstream"
   | "unrelated"
   | null;
 

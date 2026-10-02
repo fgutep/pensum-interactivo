@@ -806,6 +806,11 @@
   opacity: 1;
   box-shadow: 0 0 0 2px var(--ring-gap), 0 0 0 4px color-mix(in srgb, var(--accent) 45%, transparent);
 }
+/* "Todo el pensum" view: indirect dependents further down the chain. A quiet,
+   neutral ring (green/amber stay reserved for DIRECT dependents). */
+.card.downstream {
+  box-shadow: 0 0 0 2px var(--ring-gap), 0 0 0 4px color-mix(in srgb, var(--ink) 28%, transparent);
+}
 .card.unlockSole {
   box-shadow: 0 0 0 4px var(--st-available);
 }
@@ -2288,3 +2293,72 @@
   .bkSealCheck { animation: none; stroke-dashoffset: 0; }
   .bkHeader, .bkCourse, .bkSection, .bkChevron { transition: none; }
 }
+
+/* ---------- Unlock-view menu (toolbar) ---------- */
+.segSmBtn { white-space: nowrap; }
+.unlockMenuWrap { position: relative; flex-shrink: 0; }
+.unlockMenuBtn {
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 1px solid var(--line-control);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.unlockMenuBtn:hover { background: var(--band-a); }
+.unlockMenuBtn strong { font-weight: 600; }
+.unlockMenuBtnOn { border-color: var(--st-ok); }
+.unlockMenuLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+}
+.unlockMenu {
+  position: fixed;
+  z-index: 60;
+  width: 340px;
+  padding: 8px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(16, 24, 40, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.unlockMenuIntro { margin: 2px 6px 6px; font-size: 12px; line-height: 1.4; color: var(--muted); }
+.unlockMenuItem {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  width: 100%;
+  padding: 9px 8px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+.unlockMenuItem:hover { background: var(--band-a); }
+.unlockMenuItem > span:last-child { display: flex; flex-direction: column; gap: 2px; font-size: 12px; line-height: 1.4; color: var(--muted); }
+.unlockMenuItem strong { font-size: 13px; color: var(--ink); }
+.unlockMenuRadio {
+  flex-shrink: 0;
+  margin-top: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 1.5px solid var(--line-control);
+}
+.unlockMenuItemOn .unlockMenuRadio { border-color: var(--st-ok); background: radial-gradient(var(--st-ok) 45%, transparent 50%); }
