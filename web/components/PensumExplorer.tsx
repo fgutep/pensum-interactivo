@@ -34,7 +34,7 @@ import MapCanvas, { type RelacionesMode } from "./explorer/MapCanvas";
 import SidePanel from "./explorer/SidePanel";
 import PlannerPanel from "./explorer/PlannerPanel";
 import BasketModal from "./explorer/BasketModal";
-import { readStoredUnlockView, UNLOCK_STORAGE_KEY, type UnlockView } from "./explorer/UnlockViewControl";
+import { DEFAULT_REL_VIEW, deriveUnlockView, readStoredRelView, writeStoredRelView, type RelView } from "./explorer/UnlockViewControl";
 import OnboardingPanel, { HintPill } from "./explorer/OnboardingPanel";
 import Tour from "./explorer/Tour";
 import QuickChooser from "./explorer/QuickChooser";
@@ -66,7 +66,7 @@ export default function PensumExplorer({ data, mihorarioUrl }: Props) {
   const [gradoOpen, setGradoOpen] = useState(false);
   const [relaciones, setRelaciones] = useState<RelacionesMode>("directas");
   // forward direction (what a course unlocks): a preference, OFF by default
-  const [unlockView, setUnlockView] = useState<UnlockView>("off");
+  const [relView, setRelView] = useState<RelView>(DEFAULT_REL_VIEW);
   const [hiddenGroups, setHiddenGroups] = useState<Set<CourseGroup>>(new Set());
   const [hiddenStatuses, setHiddenStatuses] = useState<Set<StatusFilter>>(new Set());
   const [quickMode, setQuickMode] = useState(false);
@@ -101,15 +101,11 @@ export default function PensumExplorer({ data, mihorarioUrl }: Props) {
     }
   }, [slug]);
   useEffect(() => {
-    setUnlockView(readStoredUnlockView());
+    setRelView(readStoredRelView());
   }, []);
-  const handleUnlockViewChange = useCallback((v: UnlockView) => {
-    setUnlockView(v);
-    try {
-      localStorage.setItem(UNLOCK_STORAGE_KEY, v);
-    } catch {
-      /* ignore */
-    }
+  const handleRelViewChange = useCallback((v: RelView) => {
+    setRelView(v);
+    writeStoredRelView(v);
   }, []);
   useEffect(() => {
     try {
@@ -624,8 +620,7 @@ export default function PensumExplorer({ data, mihorarioUrl }: Props) {
         hiddenGroups={hiddenGroups}
         onToggleGroup={handleToggleGroup}
         relaciones={relaciones}
-        unlockView={unlockView}
-        onUnlockViewChange={handleUnlockViewChange}
+        unlockView={deriveUnlockView(relView)}
         onRelacionesChange={setRelaciones}
         statusCounts={statusCounts}
         hiddenStatuses={hiddenStatuses}
@@ -663,8 +658,8 @@ export default function PensumExplorer({ data, mihorarioUrl }: Props) {
           justUnlockedIds={justUnlocked}
           quickMode={quickMode}
           relaciones={relaciones}
-          unlockView={unlockView}
-          onUnlockViewChange={handleUnlockViewChange}
+          view={relView}
+          onViewChange={handleRelViewChange}
           panelOpen={showCoursePanel || showPlanner || showEmptyPanel || showSetup}
           onSelect={handleSelect}
           onHover={setHoveredId}

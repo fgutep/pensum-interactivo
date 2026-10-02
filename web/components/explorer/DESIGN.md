@@ -26,15 +26,17 @@ view (`/v1`) is untouched and shares none of this.
    runtime (`useEdgeColors` in `MapCanvas.tsx`).
 4. **What a course unlocks is opt-in.** A student deciding what to take cares
    about what they NEED first; the forward direction (and partial unlocks
-   especially) is a second, noisier question. The `Desbloqueos` preference is
-   **off by default**, persisted per browser, and has two named levels:
-   *Único requisito* (cleaner — only dependents this course unlocks by itself,
-   solid green) and *Todo el pensum* (niche — "how relevant is this course?":
-   every dependent, partial ones in amber, plus the whole forward chain in a
-   neutral ring and a "relevante para N cursos" count). Off hides rings, edges
-   and un-dimming for dependents; the side panel's textual "Desbloquea" stays.
-   (This supersedes the meeting's forward-chain-always-on contrast, D-5, as the
-   default; the behaviour is still one click away.)
+   especially) is a second, noisier question. The selection card at the bottom
+   of the map has three plain-language checkboxes, each with a count:
+   **Qué necesito** (prerequisites — on by default), **Qué desbloquea** (the
+   courses this one opens *by itself*, i.e. it is their only prerequisite —
+   solid green) and **Qué depende de él** (the niche "how relevant is this
+   course?" view: every dependent, partial ones in amber, the rest of the chain
+   in a neutral ring). The forward two are **off by default** and persisted per
+   browser. Unchecking "Qué necesito" hides the prerequisite rings/edges too.
+   The card docks 256 px in from each side so it never covers the lower-left
+   zoom + basket controls. (This supersedes the meeting's forward-chain-always-on
+   contrast, D-5, as the default.)
 5. **Quiet by default in Mi avance.** An available course is the default, so it
    gets no mark — no green ring on every available card. State is carried by
    the card itself: approved = green fill + check, in the basket = a term pill
@@ -107,6 +109,27 @@ light blue.
 - The unlock animation (`.justUnlocked`: a pulsing green ring + a light sweep)
   repeats 3× so a newly unlocked course registers (review item F-7).
   `prefers-reduced-motion` turns it off.
+
+## Basket checkout ("Tu canasta")
+
+A two-step dialog, the "commitment" moment after planning:
+
+1. **Revisar** — your week at full width (summary tiles: class hours, earliest
+   and latest class, free weekdays; blocks carry course, section, time, room,
+   NRC; clashes are listed with the exact slot), a collapsible *¿Cómo
+   funcionan los NRC?* explainer, then each course with its catalog
+   description, requisite status and live sections (teachers, days, rooms,
+   seats). A course also shows how many *other* sections would fit around the
+   rest of the plan.
+2. **Qué sigue** — copy your NRCs → tune the schedule in Mi Horario → enrol in
+   MiBanner at your turn, plus a short "before enrolment day" checklist
+   (turn, backup NRCs, prerequisites/restrictions, corequisites, SCH) and links
+   to the official Registro guides. Copy is written as a professional note, not
+   marketing.
+
+Sections come from `/api/sections` (server-side; the Uniandes API has no CORS).
+An unpublished plan term falls back to the term being offered and is labelled
+*referencia* everywhere it appears.
 
 ## Accessibility
 

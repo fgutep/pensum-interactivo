@@ -17,7 +17,7 @@ import { upstreamOf, downstreamOf, unlockRelation } from "@/lib/availability";
 import { numberRequirementGroups } from "./reqGroups";
 import { toSentenceCase } from "./format";
 import CourseCard, { type RelationState } from "./CourseCard";
-import UnlockViewControl, { type UnlockView } from "./UnlockViewControl";
+import RelationToggles, { deriveUnlockView, type RelView } from "./UnlockViewControl";
 import { PlusIcon, MinusIcon, FitIcon } from "./icons";
 import styles from "./explorer.module.css";
 
@@ -144,9 +144,9 @@ interface Props {
   justUnlockedIds: Set<string>;
   quickMode: boolean;
   relaciones: RelacionesMode;
-  /** what to show of the FORWARD direction (dependents). Off by default. */
-  unlockView: UnlockView;
-  onUnlockViewChange: (v: UnlockView) => void;
+  /** which relations to draw around the selected course (forward ones are opt-in) */
+  view: RelView;
+  onViewChange: (v: RelView) => void;
   panelOpen: boolean;
   onSelect: (id: string) => void;
   onHover: (id: string | null) => void;
@@ -165,13 +165,15 @@ export default function MapCanvas({
   justUnlockedIds,
   quickMode,
   relaciones,
-  unlockView,
-  onUnlockViewChange,
+  view,
+  onViewChange,
   panelOpen,
   onSelect,
   onHover,
 }: Props) {
   const { PREREQ_COLOR, CHAIN_COLOR, COREQ_COLOR, UNLOCK_SOLE_COLOR, UNLOCK_AMONG_COLOR } = useEdgeColors();
+  const unlockView = deriveUnlockView(view);
+  const showNeeds = view.needs;
   const catalogCodes = useMemo(() => new Set(courses.map((c) => c.codeNormalized)), [courses]);
   const byId = useMemo(() => new Map(courses.map((c) => [c.id, c])), [courses]);
 
@@ -350,7 +352,7 @@ export default function MapCanvas({
         // sweeping the cursor never rebuilds a card.
         const inFocusSet =
           course.id === selectedId ||
-          (relaciones === "cadena" ? selUpstream.has(course.id) : selDirectAncestors.has(course.id)) ||
+          (showNeeds && (relaciones === "cadena" ? selUpstream.has(course.id) : selDirectAncestors.has(course.id))) ||
           selDownstream.has(course.id) ||
           selUnlockById.has(course.id) ||
           selCoreqNeighbors.has(course.id);
@@ -359,8 +361,8 @@ export default function MapCanvas({
         if (selectedId) {
           if (course.id === selectedId) relation = "selected";
           else if (selUnlockById.has(course.id)) relation = selUnlockById.get(course.id)!;
-          else if (selDirectAncestors.has(course.id)) relation = "directPrereq";
-          else if (relaciones === "cadena" && selUpstream.has(course.id)) relation = "chainIndirectFull";
+          else if (showNeeds && selDirectAncestors.has(course.id)) relation = "directPrereq";
+          else if (showNeeds && relaciones === "cadena" && selUpstream.has(course.id)) relation = "chainIndirectFull";
           else if (selDownstream.has(course.id)) relation = "downstream";
         }
 
@@ -380,7 +382,7 @@ export default function MapCanvas({
             isPlanned: plannedIds.has(course.id),
             plannedTerm: plannedIds.get(course.id) ?? null,
             relation: quickMode ? null : relation,
-            reqNumber: selectedId ? reqNumberByCourseId.get(course.id) ?? null : null,
+            reqNumber: selectedId && showNeeds ? reqNumberByCourseId.get(course.id) ?? null : null,
             isStaged: stagedIds.has(course.id),
             isJustUnlocked: justUnlockedIds.has(course.id),
             isDimmed,
@@ -397,6 +399,7 @@ export default function MapCanvas({
     courses,
     mode,
     selectedId,
+    showNeeds,
     relaciones,
     selUpstream,
     selDownstream,
@@ -431,8 +434,8 @@ export default function MapCanvas({
         // forward edges (focus -> dependent) only exist for what the user asked
         // to see; upstream edges (prerequisites of the focus) always do
         const forwardShown = prereqId === focusId && unlockShown.has(c.id);
-        const touchesFocus = c.id === focusId || forwardShown;
-        const withinChain = !isHoverPreview && relaciones === "cadena" && inAncestorEdges(c.id) && inAncestorEdges(prereqId);
+        const touchesFocus = (showNeeds && c.id === focusId) || forwardShown;
+        const withinChain = showNeeds && !isHoverPreview && relaciones === "cadena" && inAncestorEdges(c.id) && inAncestorEdges(prereqId);
         const withinForward = !isHoverPreview && unlockView === "all" && inForward(c.id) && inForward(prereqId);
         if (!touchesFocus && !withinChain && !withinForward) continue;
 
@@ -483,35 +486,25 @@ export default function MapCanvas({
       }
     }
     return out;
-  }, [courses, focusId, selectedId, relaciones, unlockView, upstreamAll, downstream, directAncestors, unlockShown, PREREQ_COLOR, CHAIN_COLOR, COREQ_COLOR, UNLOCK_SOLE_COLOR, UNLOCK_AMONG_COLOR]);
+  }, [courses, focusId, selectedId, showNeeds, relaciones, unlockView, upstreamAll, downstream, directAncestors, unlockShown, PREREQ_COLOR, CHAIN_COLOR, COREQ_COLOR, UNLOCK_SOLE_COLOR, UNLOCK_AMONG_COLOR]);
 
-  const [selectionSummary, setSelectionSummary] = useState("");
-  useEffect(() => {
-    if (!selected) {
-      setSelectionSummary("");
-      return;
-    }
-    const directCount = selected.prereqCourseIds.length;
-    const unlockCount = [...unlockById.values()].filter(Boolean).length;
-    if (relaciones === "directas") {
-      setSelectionSummary(
-        `${directCount} requisito${directCount === 1 ? "" : "s"} directo${directCount === 1 ? "" : "s"} · ${
-          unlockCount === 0 ? "nada depende de ella" : `desbloquea ${unlockCount}`
-        }`
-      );
-    } else {
-      const chainCount = upstreamAll.size;
-      setSelectionSummary(`${chainCount} requisito${chainCount === 1 ? "" : "s"} en la cadena · ${directCount} directo${directCount === 1 ? "" : "s"}`);
-    }
-  }, [selected, unlockById, relaciones, upstreamAll]);
-
-  // the "niche" question: how much of the pensum leans on this course
-  const relevance =
-    unlockView === "all" && selected
-      ? downstream.size === 0
-        ? "Nada depende de ella."
-        : `Relevante para ${downstream.size} curso${downstream.size === 1 ? "" : "s"} del pensum.`
-      : "";
+  // numbers shown next to the three relation toggles + one quiet sentence
+  const relCounts = useMemo(() => {
+    if (!selected) return { needs: 0, unlocks: 0, depends: 0 };
+    const sole = [...unlockById.values()].filter((r) => r === "unlockSole").length;
+    return {
+      needs: relaciones === "cadena" ? upstreamAll.size : selected.prereqCourseIds.length,
+      unlocks: sole,
+      depends: downstream.size,
+    };
+  }, [selected, unlockById, relaciones, upstreamAll, downstream]);
+  const relNote = !selected
+    ? ""
+    : relCounts.depends === 0
+      ? "Ningún curso del pensum depende de este."
+      : relCounts.unlocks === 0
+        ? `Por sí solo no desbloquea ninguno, pero ${relCounts.depends} curso${relCounts.depends === 1 ? "" : "s"} del pensum dependen de él.`
+        : `Aprobarlo basta para desbloquear ${relCounts.unlocks} curso${relCounts.unlocks === 1 ? "" : "s"}; ${relCounts.depends} dependen de él en total.`;
 
   // MAP-05: fade + pan-to-hidden-semester chips at each edge that's cut off.
   const semesterCount = useMemo(() => new Set(courses.map((c) => c.semester)).size, [courses]);
@@ -561,16 +554,20 @@ export default function MapCanvas({
         </Panel>
       </ReactFlow>
       {selected && (
-        <div className={styles.selectionBar}>
-          <span className={styles.selectionCode}>{selected.code}</span>
-          <span className={styles.selectionSummary}>
-            {selectionSummary}
-            {relevance && ` · ${relevance}`}
-          </span>
-          <UnlockViewControl value={unlockView} onChange={onUnlockViewChange} />
-          <button className={styles.selectionClear} onClick={() => onSelect("")}>
-            Limpiar Esc
-          </button>
+        // The dock keeps clear of the lower-left controls (zoom + basket button)
+        // however wide the card gets; only the card itself takes clicks.
+        <div className={styles.selDock}>
+          <div className={styles.selCard} role="region" aria-label={`Selección: ${selected.code}`}>
+            <div className={styles.selHead}>
+              <span className={styles.selCode}>{selected.code}</span>
+              <span className={styles.selName}>{toSentenceCase(selected.name)}</span>
+              <button type="button" className={styles.selClear} onClick={() => onSelect("")}>
+                Limpiar <kbd>Esc</kbd>
+              </button>
+            </div>
+            <RelationToggles view={view} onChange={onViewChange} counts={relCounts} />
+            <p className={styles.selNote}>{relNote}</p>
+          </div>
         </div>
       )}
       {!selectedId && hoveredId && hoverRect && focusCourse && (

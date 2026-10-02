@@ -39,12 +39,6 @@ export function exploreSteps(anchorId: string | null): TourStepDef[] {
       body: "Directas muestra solo lo que necesitas para inscribir el curso. Toda la cadena suma también los requisitos de esos requisitos.",
     },
     {
-      id: "unlocks",
-      target: '[data-tour="unlocks"]',
-      title: "¿Y lo que desbloquea?",
-      body: "Está apagado por defecto: lo que importa es lo que necesitas antes. Actívalo si quieres ver qué cursos abre este por sí solo (Único requisito) o cuánto del pensum depende de él (Todo el pensum).",
-    },
-    {
       id: "legend",
       target: '[data-tour="legend"]',
       title: "Líneas continuas y punteadas",

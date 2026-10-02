@@ -4,7 +4,7 @@ import type { CourseGroup } from "./format";
 import { GROUP_LABEL, groupColor } from "./format";
 import styles from "./explorer.module.css";
 import type { RelacionesMode } from "./MapCanvas";
-import { UnlockViewMenu, type UnlockView } from "./UnlockViewControl";
+import type { UnlockView } from "./UnlockViewControl";
 
 const EXPLORE_GROUPS: { group: CourseGroup; dashed: boolean }[] = [
   { group: "iele", dashed: false },
@@ -30,7 +30,6 @@ interface Props {
   relaciones: RelacionesMode;
   onRelacionesChange: (r: RelacionesMode) => void;
   unlockView: UnlockView;
-  onUnlockViewChange: (v: UnlockView) => void;
   statusCounts: Record<StatusFilter, number>;
   hiddenStatuses: Set<StatusFilter>;
   onToggleStatus: (s: StatusFilter) => void;
@@ -46,7 +45,6 @@ export default function Toolbar({
   relaciones,
   onRelacionesChange,
   unlockView,
-  onUnlockViewChange,
   statusCounts,
   hiddenStatuses,
   onToggleStatus,
@@ -103,10 +101,6 @@ export default function Toolbar({
           >
             Toda la cadena
           </button>
-        </div>
-        <div className={styles.vDivider} />
-        <div data-tour="unlocks">
-          <UnlockViewMenu value={unlockView} onChange={onUnlockViewChange} />
         </div>
         <div className={styles.edgeLegend} data-tour="legend">
           <span className={styles.legendSample}>
