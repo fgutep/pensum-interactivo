@@ -34,6 +34,7 @@ import MapCanvas, { type RelacionesMode } from "./explorer/MapCanvas";
 import SidePanel from "./explorer/SidePanel";
 import PlannerPanel from "./explorer/PlannerPanel";
 import BasketModal from "./explorer/BasketModal";
+import AvanceWelcome from "./explorer/AvanceWelcome";
 import { DEFAULT_REL_VIEW, deriveUnlockView, readStoredRelView, writeStoredRelView, type RelView } from "./explorer/UnlockViewControl";
 import OnboardingPanel, { HintPill } from "./explorer/OnboardingPanel";
 import Tour from "./explorer/Tour";
@@ -89,6 +90,8 @@ export default function PensumExplorer({ data, mihorarioUrl }: Props) {
   const [exploreTourDone, setExploreTourDone] = useState(true); // true until hydrated, so it never flashes
   const [avanceTourDone, setAvanceTourDone] = useState(true);
   const [chooserOpen, setChooserOpen] = useState(false);
+  const [welcomeOpen, setWelcomeOpen] = useState(false);
+  const [setupSemester, setSetupSemester] = useState<number | null>(null);
   const [basketOpen, setBasketOpen] = useState(false);
   const [basketFocusId, setBasketFocusId] = useState<string | null>(null);
   const [setupFirstTime, setSetupFirstTime] = useState(true);
@@ -319,6 +322,7 @@ export default function PensumExplorer({ data, mihorarioUrl }: Props) {
     setOnboardDismissed(true);
     setHintDismissed(true);
     setChooserOpen(false);
+    setWelcomeOpen(false);
     setTour({ kind, step: 0 });
   }, []);
   const nextTour = useCallback(() => {
@@ -405,6 +409,7 @@ export default function PensumExplorer({ data, mihorarioUrl }: Props) {
     setSelectedId(null);
     setPanelOpen(false);
     setSetupFirstTime(false);
+    setSetupSemester(null);
     setSetupOpen(true);
   }, []);
 
@@ -530,6 +535,28 @@ export default function PensumExplorer({ data, mihorarioUrl }: Props) {
   const showSetup = !quickMode && !selectedCourse && mode === "progress" && setupOpen;
   const showPlanner = !quickMode && !selectedCourse && mode === "progress" && !setupOpen;
 
+  // Landing straight on Mi avance (e.g. a shared ?modo=avance link) with nothing
+  // saved is also a first visit — the student never saw the Explorar tour.
+  useEffect(() => {
+    if (hydrated && mode === "progress" && !setupSeen && approved.size === 0 && planned.size === 0 && tour === null) {
+      setSetupFirstTime(true);
+      setWelcomeOpen(true);
+    }
+    // only on hydration; later changes are handled by handleModeChange
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated]);
+
+  // welcome -> chosen path. Any dismissal counts as "seen" so it never nags.
+  const closeWelcome = useCallback(() => {
+    setWelcomeOpen(false);
+    setSetupSeen(true);
+    try {
+      localStorage.setItem(`pensum:${slug}:setup-seen`, "1");
+    } catch {
+      /* ignore */
+    }
+  }, [slug]);
+
   const markSetupSeen = useCallback(() => {
     const wasFirst = setupFirstTime;
     setSetupSeen(true);
@@ -550,9 +577,10 @@ export default function PensumExplorer({ data, mihorarioUrl }: Props) {
         setQuickMode(false);
         setStaged(new Set());
       } else if (!setupSeen && approved.size === 0 && planned.size === 0) {
-        // ONB-09: first-ever switch to Mi avance with nothing saved yet
+        // ONB-09: first-ever switch to Mi avance with nothing saved yet: a clear
+        // welcome modal first (the sidebar setup only follows a chosen path)
         setSetupFirstTime(true);
-        setSetupOpen(true);
+        setWelcomeOpen(true);
       } else if (!avanceTourDone && tour === null) {
         // returning student's first look at Mi avance: offer the step-by-step guide
         setTimeout(() => startTour("avance"), 350);
@@ -718,6 +746,28 @@ export default function PensumExplorer({ data, mihorarioUrl }: Props) {
           </button>
         )}
 
+        {welcomeOpen && (
+          <AvanceWelcome
+            courses={courses}
+            onStartFresh={closeWelcome}
+            onPickSemester={(n) => {
+              closeWelcome();
+              setSetupSemester(n);
+              setSetupFirstTime(true);
+              setSetupOpen(true);
+            }}
+            onByCourse={() => {
+              closeWelcome();
+              startQuickTool();
+            }}
+            onLookAround={closeWelcome}
+            onTour={() => {
+              closeWelcome();
+              startTour("avance");
+            }}
+          />
+        )}
+
         {chooserOpen && (
           <QuickChooser onBySemester={startQuickBySemester} onByTool={startQuickTool} onClose={() => setChooserOpen(false)} />
         )}
@@ -777,6 +827,7 @@ export default function PensumExplorer({ data, mihorarioUrl }: Props) {
               onBlank={markSetupSeen}
               onPreviewChange={setSetupPreviewIds}
               firstTime={setupFirstTime}
+              initialSemester={setupSemester}
               onUseTool={() => {
                 setSetupSeen(true);
                 setSetupOpen(false);

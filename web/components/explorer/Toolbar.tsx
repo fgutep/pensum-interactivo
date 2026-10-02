@@ -16,6 +16,13 @@ const EXPLORE_GROUPS: { group: CourseGroup; dashed: boolean }[] = [
 ];
 
 export type StatusFilter = "approved" | "available" | "one-away" | "blocked" | "admin";
+const SWATCH_CLASS: Record<StatusFilter, string> = {
+  approved: "swApproved",
+  available: "swAvailable",
+  "one-away": "swAvailable",
+  blocked: "swBlocked",
+  admin: "swAdmin",
+};
 const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
   { key: "approved", label: "Aprobadas" },
   { key: "available", label: "Disponibles" },
@@ -153,6 +160,7 @@ export default function Toolbar({
               aria-pressed={!off}
               onClick={() => onToggleStatus(key)}
             >
+              <span className={`${styles.stSw} ${styles[SWATCH_CLASS[key]]}`} aria-hidden />
               {label}
               <span className={styles.chipCount}>{statusCounts[key]}</span>
             </button>
@@ -160,6 +168,23 @@ export default function Toolbar({
         })}
       </div>
       <div className={styles.spacer} />
+      {/* the same line legend as Explorar: it matters here too, as soon as a
+          course is selected and its prerequisite / corequisite lines appear */}
+      <div className={styles.edgeLegend} data-tour="legend">
+        <span className={styles.legendSample} title="Línea azul continua: debe estar aprobado antes de inscribir el curso.">
+          <svg width="20" height="8" aria-hidden>
+            <line x1="1" y1="4" x2="14" y2="4" stroke="var(--edge-prereq)" strokeWidth="2" />
+            <path d="M14 1 L19 4 L14 7 Z" fill="var(--edge-prereq)" />
+          </svg>
+          Prerrequisito
+        </span>
+        <span className={styles.legendSample} title="Línea ámbar punteada: se inscribe al tiempo, o puede cursarse el mismo semestre.">
+          <svg width="20" height="8" aria-hidden>
+            <line x1="1" y1="4" x2="19" y2="4" stroke="var(--edge-coreq)" strokeWidth="2" strokeDasharray="4 3" />
+          </svg>
+          Correquisito
+        </span>
+      </div>
       <button
         type="button"
         className={`${styles.ghostBtn} ${quickMode ? styles.active : ""}`}

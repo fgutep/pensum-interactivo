@@ -82,7 +82,13 @@ export function avanceSteps(): TourStepDef[] {
       id: "states",
       target: '[data-tour="status"]',
       title: "2 · Lee los colores",
-      body: "Verde sólido con ✓: ya lo viste. Anillo verde: lo puedes inscribir ahora. Azul: está en tu plan. Gris: aún te faltan prerrequisitos. Marcar un curso no marca los anteriores: tú decides, por si tienes homologaciones.",
+      body: "Verde con ✓: ya lo viste. Pastilla azul con el semestre: está en tu canasta. Rayado gris: aún te faltan prerrequisitos. Sin marca: lo puedes inscribir ahora. Marcar un curso no marca los anteriores: tú decides, por si tienes homologaciones.",
+    },
+    {
+      id: "legend",
+      target: '[data-tour="legend"]',
+      title: "Líneas continuas y punteadas",
+      body: "Al tocar un curso verás sus conexiones: línea azul continua = prerrequisito (debe estar aprobado antes); línea ámbar punteada = correquisito (se inscribe al tiempo o puede cursarse el mismo semestre).",
     },
     {
       id: "progress",

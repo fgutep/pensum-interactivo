@@ -110,6 +110,32 @@ light blue.
   repeats 3× so a newly unlocked course registers (review item F-7).
   `prefers-reduced-motion` turns it off.
 
+## First arrival at Mi avance
+
+A student can land on Mi avance without ever seeing the Explorar tour (a shared
+`?modo=avance` link, or just clicking the tab), possibly anxious, and not where
+the setup assumed. So the first visit with nothing saved opens a **welcome
+modal** (`AvanceWelcome`), not the sidebar sheet:
+
+- reassuring lead ("sin presión: puedes cambiar cualquier curso después"),
+- **¿En qué punto vas?** with a path per situation — *Estoy empezando la
+  carrera* (nothing marked), *Ya terminé uno o más semestres* (semester picker →
+  by-semester setup), *Voy distinto al plan* (lost/deferred courses or
+  homologations → mark course by course); plus *Solo quiero mirar* and a
+  1-minute guide,
+- **Cómo leer el mapa**: real card miniatures (approved, in basket, available,
+  blocked) and both line styles (solid blue = prerequisite, dashed amber =
+  corequisite).
+
+**No default semester.** The by-semester setup used to preselect II, silently
+marking all of semester I as approved for someone who hasn't finished it. Now
+nothing is preselected and nothing is marked until a semester is chosen;
+choosing I means "start from zero". Any dismissal counts as seen (no nagging);
+the same setup stays reachable from *Selección rápida*.
+
+The Mi avance toolbar also carries the prerequisite/corequisite line legend and
+a swatch on each status chip (green dot, hollow dot, hatched square, amber dot).
+
 ## Basket checkout ("Tu canasta")
 
 A two-step dialog, the "commitment" moment after planning:
