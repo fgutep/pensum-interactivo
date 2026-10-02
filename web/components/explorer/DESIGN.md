@@ -21,8 +21,13 @@ view (`/v1`) is untouched and shares none of this.
    *selection* (a click). This was a reviewer ask (less visual noise) and it
    keeps the map readable at 60 cards.
 3. **Tokens over literals.** Colors, lines and surfaces are CSS variables so a
-   re-theme is a one-file change. A few state colors (green `#15803d`, amber
-   edges) are still literal in the CSS/`MapCanvas.tsx` — see *Known gaps*.
+   re-theme is a one-file change. There is one green (`--st-ok`) and one amber
+   (`--st-warn`); edge colors are read from `--edge-prereq` / `--edge-coreq` at
+   runtime (`useEdgeColors` in `MapCanvas.tsx`).
+4. **Quiet by default in Mi avance.** An available course is the default, so it
+   gets no mark — no green ring on every available card. State is carried by
+   the card itself: approved = green fill + check, in the basket = a term pill
+   (e.g. "2027-1"), blocked = hatching, administrative rule = amber lock.
 
 ## Tokens (`tokens.css`)
 
@@ -33,7 +38,11 @@ view (`/v1`) is untouched and shares none of this.
   variants. It marks selection, direct prerequisites and focus.
 - **Course types (`--t-*`):** one deep, saturated hue per group — Eléctrica
   teal, Ciencias básicas brown, Otras slate, Proyecto blue, Electiva magenta,
-  CBU indigo, Requisito grey. All are dark enough for white text on the card.
+  CBU indigo, Requisito grey. White text on each is 6.3–9.6:1 (measured).
+  Type is also encoded by a **glyph** before the code (circle, square, diamond,
+  triangle, ring, half-circle, bar), so it doesn't rely on hue alone.
+- **Text on cards:** code and credits use a *solid* secondary color per type
+  (`--on-type-2-*`, ≥ 4.5:1 on that fill), never `opacity`.
 - **Status (`--st-*`):** green = available/planned, amber = one course away /
   admin-locked, hatched grey = blocked.
 - **Type:** IBM Plex Sans for UI, IBM Plex Mono for codes, credits, kickers and
@@ -60,9 +69,9 @@ State is composed from independent classes on the same button:
 | Layer | Classes | Look |
 |---|---|---|
 | Type | `.typeIele`, `.typeCb`, … `.slot*` | Sets `--card-color` (the fill). Placeholder/slot cards use the same solid card — only the color differs — so every node clicks and reads the same. |
-| Selection relation | `.selected`, `.directPrereq`, `.chainIndirectFull`, `.unlockSole`, `.unlockAmong` | Rings via `box-shadow` (white gap + colored ring). Selected also lifts 2 px. Green ring = this is the only thing missing for a course; amber = one of several. |
+| Selection relation | `.selected`, `.directPrereq`, `.chainIndirectFull`, `.unlockSole`, `.unlockAmong` | Rings via `box-shadow` (`--ring-gap` + colored ring). Selected is the only card with a 5 px accent ring, drop shadow and 2 px lift (F-3). Green ring = this is the only thing missing for a course; amber = one of several. |
 | Dimming | `.dimmed`, `.unrelated` | Unrelated cards fade (opacity ≈ 0.15–0.34) while a course is selected. |
-| Mi avance | `.stApproved`, `.stAvailable`, `.stPlanned`, `.stBlocked`, `.stAdmin`, `.staged` | Approved = green fill + check badge. Available/planned = green ring. Blocked = hatched grey with muted text (readable as "not yet" without hue). Admin-locked = hatched + amber ring. |
+| Mi avance | `.stApproved`, `.stBlocked`, `.stAdmin`, `.tag`, `.staged` | Approved = green fill + 20 px check. In the basket = term pill on the top edge. Blocked = hatched grey with muted text (readable without hue). Admin-locked = hatched + amber lock marker. Available = no mark. |
 
 Rings use `box-shadow` instead of `border`/`outline` so they never change the
 card's box size — nothing shifts or reflows when a state changes.
@@ -80,8 +89,10 @@ light blue.
   re-rendered all ~60 cards at the instant the ring appeared — that was the
   flicker. Now hover only drives the preview edges and tooltip (debounced
   70 ms / 250 ms) and never touches the nodes.
-  `:where()` keeps specificity at `(0,1,0)` and the rule sits above the
-  relation/status rules, so selection and status styles still win.
+  It applies to every card (approved and blocked too) but a `:not()` list keeps
+  it from replacing a relation ring. Relation rings are `.card.selected` etc.
+  (specificity 0,2,0) so a status rule that sets `box-shadow` can never erase
+  the selected card's ring.
 - The unlock animation (`.justUnlocked`: a pulsing green ring + a light sweep)
   repeats 3× so a newly unlocked course registers (review item F-7).
   `prefers-reduced-motion` turns it off.
@@ -100,11 +111,11 @@ light blue.
   The map + 400 px panel layout is desktop-first.
 - **Reduced motion** is honored for the unlock animation and one other block;
   the 0.12 s transitions and `fitView` animations are not gated.
-- **Remaining literals:** `#15803d`, `#16a34a`, `#d97706` and the edge colors
-  in `MapCanvas.tsx` duplicate token values — they should reference
-  `--st-*` / `--accent` (edges are SVG props, so they'd need to be read from
-  CSS variables at runtime).
-- **Contrast** hasn't been measured; the type colors were picked dark for
-  white text but not verified against WCAG.
+- **Count mismatch:** the "Disponibles" chip (all available, incl. slots) and
+  the panel's "Disponibles para agregar" (addable, excl. basket/slots) show
+  different numbers for similar labels — needs a naming/definition decision.
+- **Contrast** of the type fills and status colors is measured; the remaining
+  to-measure items are listed in `CHANGES.md` §4.5 (`--accent` on its tint is
+  4.46:1, just under 4.5).
 - Fonts load from Google Fonts at runtime (`@import` in `tokens.css`); a
   self-hosted copy would remove the external dependency.

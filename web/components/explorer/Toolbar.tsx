@@ -99,17 +99,17 @@ export default function Toolbar({
             Toda la cadena
           </button>
         </div>
-        <div className={styles.edgeLegend}>
+        <div className={styles.edgeLegend} data-tour="legend">
           <span className={styles.legendSample}>
             <svg width="20" height="8" aria-hidden>
-              <line x1="1" y1="4" x2="14" y2="4" stroke="var(--accent)" strokeWidth="2" />
-              <path d="M14 1 L19 4 L14 7 Z" fill="var(--accent)" />
+              <line x1="1" y1="4" x2="14" y2="4" stroke="var(--edge-prereq)" strokeWidth="2" />
+              <path d="M14 1 L19 4 L14 7 Z" fill="var(--edge-prereq)" />
             </svg>
             Prerrequisito
           </span>
           <span className={styles.legendSample}>
             <svg width="20" height="8" aria-hidden>
-              <line x1="1" y1="4" x2="19" y2="4" stroke="#d97706" strokeWidth="2" strokeDasharray="4 3" />
+              <line x1="1" y1="4" x2="19" y2="4" stroke="var(--edge-coreq)" strokeWidth="2" strokeDasharray="4 3" />
             </svg>
             Correquisito
           </span>

@@ -273,8 +273,8 @@
   background: var(--surface-sunken);
 }
 .ghostBtn.active {
-  background: #16a34a;
-  border-color: #16a34a;
+  background: var(--st-ok);
+  border-color: var(--st-ok);
   color: #fff;
 }
 .accentGhost {
@@ -623,35 +623,39 @@
   width: 148px;
   height: 60px;
   box-sizing: border-box;
-  padding: 7px 9px 8px;
-  border-radius: 8px;
+  /* 8 + 12 (code row) + 3 (gap) + 30 (2 title lines) + 7 = 60. The 12px right
+     padding keeps credits clear of the corner state marker. */
+  padding: 8px 12px 7px 10px;
+  border-radius: var(--card-r);
   background: var(--card-color);
-  color: #fff;
+  color: var(--on-type);
+  font-variant-numeric: tabular-nums;
   border: none;
   text-align: left;
   cursor: pointer;
   box-shadow: 0 1px 2px rgba(16, 24, 40, 0.14);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
   transition: opacity 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
 }
 .card:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--accent);
+  box-shadow: 0 0 0 2px var(--ring-gap), 0 0 0 4px var(--accent);
 }
 
 /* Hover ring is pure CSS (no React state → no re-render of the other cards).
-   :where() keeps specificity at (0,1,0) and it sits above the relation/status
-   rules, so those still win when they apply. */
-:where(.card):hover {
-  box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--ink);
+   It applies to every card (approved and blocked too) but never replaces a
+   relation ring, hence the :not() list. */
+/* the gap is --ring-gap so the ring floats on any surface (dark theme) */
+.card:not(.selected):not(.directPrereq):not(.chainIndirectFull):not(.unlockSole):not(.unlockAmong):hover {
+  box-shadow: 0 0 0 2px var(--ring-gap), 0 0 0 4px var(--ink);
 }
 
-.typeIele { --card-color: var(--t-iele); }
-.typeCb { --card-color: var(--t-cb); }
-.typeOtr { --card-color: var(--t-otr); }
-.typePro { --card-color: var(--t-pro); }
+.typeIele { --card-color: var(--t-iele); --on-type-2: var(--on-type-2-iele); }
+.typeCb { --card-color: var(--t-cb); --on-type-2: var(--on-type-2-cb); }
+.typeOtr { --card-color: var(--t-otr); --on-type-2: var(--on-type-2-otr); }
+.typePro { --card-color: var(--t-pro); --on-type-2: var(--on-type-2-pro); }
 
 .cardTop {
   display: flex;
@@ -661,9 +665,10 @@
 }
 .cardCode {
   font-family: "IBM Plex Mono", monospace;
-  font-size: 10px;
+  font-size: 10.5px;
+  line-height: 12px;
   font-weight: 500;
-  opacity: 0.92;
+  color: var(--on-type-2); /* solid colour, never opacity — see tokens.css */
   display: flex;
   align-items: center;
   gap: 4px;
@@ -673,14 +678,25 @@
 }
 .cardCredits {
   font-family: "IBM Plex Mono", monospace;
-  font-size: 10px;
-  font-weight: 600;
+  font-size: 10.5px;
+  line-height: 12px;
+  font-weight: 500;
+  color: var(--on-type-2);
   flex-shrink: 0;
 }
+.typeGlyph {
+  flex-shrink: 0;
+}
+/* blocked / admin cards swap to muted ink on hatching: their code + credits
+   must follow it instead of the type's light secondary colour */
+.stBlocked .cardCode, .stBlocked .cardCredits,
+.stAdmin .cardCode, .stAdmin .cardCredits {
+  color: inherit;
+}
 .cardTitle {
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 600;
-  line-height: 1.22;
+  line-height: 15px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -693,9 +709,18 @@
   background: var(--card-color);
   color: #fff;
 }
-.slotEle { --card-color: var(--t-ele); }
-.slotCbu { --card-color: var(--t-cbu); }
-.slotReq { --card-color: var(--t-req); }
+/* "to be defined" marker for slot cards. A child span, because ::after is
+   already used by the unlock sweep. */
+.slotDash {
+  position: absolute;
+  inset: 4px;
+  border: 1px dashed color-mix(in srgb, var(--on-type) 55%, transparent);
+  border-radius: calc(var(--card-r) - 3px);
+  pointer-events: none;
+}
+.slotEle { --card-color: var(--t-ele); --on-type-2: var(--on-type-2-ele); }
+.slotCbu { --card-color: var(--t-cbu); --on-type-2: var(--on-type-2-cbu); }
+.slotReq { --card-color: var(--t-req); --on-type-2: var(--on-type-2-req); }
 
 .numberBadge {
   position: absolute;
@@ -713,24 +738,47 @@
   justify-content: center;
   border: 2px solid #fff;
 }
+/* Basket pill: "this card is in your basket for <term>". Straddles the top
+   edge; its bottom stays above the code row so it never touches credits,
+   and it clears the semester header above the first row. */
 .tag {
   position: absolute;
   top: -9px;
-  right: 6px;
-  height: 17px;
-  padding: 0 7px;
+  right: 8px;
+  height: 16px;
+  padding: 0 6px;
   border-radius: 999px;
-  background: var(--accent);
+  background: var(--st-plan);
   color: #fff;
-  font-size: 9.5px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px;
   font-weight: 600;
-  border: 2px solid #fff;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  border: 2px solid var(--ring-gap);
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   gap: 3px;
 }
 .tag.tagOne {
-  background: var(--st-one-text);
+  background: var(--st-warn);
+}
+/* Administrative-rule marker (F-2): amber lock, same slot as the check. */
+.lockBadge {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--st-warn);
+  color: #fff;
+  border: 2px solid var(--ring-gap);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .checkIcon {
   display: inline-flex;
@@ -740,25 +788,28 @@
 }
 
 /* relation states (Explorar) */
-.selected {
-  box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--ink), 0 12px 28px rgba(16, 24, 40, 0.34);
+/* The selected card is the ONLY one with a 5px ring + drop shadow + lift, so it
+   can be found at normal zoom without relying on dimming the others (F-3: the
+   old black border made two cards look alike). */
+.card.selected {
+  box-shadow: 0 0 0 2px var(--ring-gap), 0 0 0 5px var(--accent), 0 6px 16px rgba(16, 24, 40, 0.18);
   transform: translateY(-2px);
   z-index: 6;
 }
-.directPrereq {
-  box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--accent);
+.card.directPrereq {
+  box-shadow: 0 0 0 2px var(--ring-gap), 0 0 0 4px var(--accent);
 }
 .chainIndirect {
   opacity: 0.82;
 }
-.chainIndirectFull {
+.card.chainIndirectFull {
   opacity: 1;
-  box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px var(--accent-soft);
+  box-shadow: 0 0 0 2px var(--ring-gap), 0 0 0 4px color-mix(in srgb, var(--accent) 45%, transparent);
 }
-.unlockSole {
+.card.unlockSole {
   box-shadow: 0 0 0 4px var(--st-available);
 }
-.unlockAmong {
+.card.unlockAmong {
   box-shadow: 0 0 0 4px var(--st-one);
 }
 .unrelated {
@@ -768,7 +819,8 @@
 
 /* Mi avance status states */
 .stApproved {
-  --card-color: #15803d;
+  --card-color: var(--st-ok);
+  --on-type-2: var(--on-type-2-ok);
   box-shadow: none;
   filter: none;
 }
@@ -779,18 +831,20 @@
   width: 20px;
   height: 20px;
   border-radius: 999px;
-  background: #fff;
-  color: #15803d;
-  border: 2px solid #15803d;
+  background: var(--ring-gap);
+  color: var(--st-ok);
+  border: 2px solid var(--st-ok);
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.stAvailable {
-  box-shadow: 0 0 0 4px var(--st-available);
-}
+/* .stAvailable / .stPlanned intentionally carry NO ring: an available course
+   is the default, so it gets no mark (a ring on every one made the right half
+   of the map read as noise). Planned shows the basket pill instead. Kept as
+   empty hooks so Disponibles-chip spotlighting can attach here later. */
+.stAvailable,
 .stPlanned {
-  box-shadow: 0 0 0 4px var(--st-available);
+  --quiet: 1;
 }
 .stBlocked {
   background: repeating-linear-gradient(
@@ -804,7 +858,6 @@
   box-shadow: none;
 }
 .stAdmin {
-  box-shadow: 0 0 0 4px var(--st-admin);
   background: repeating-linear-gradient(
     135deg,
     var(--st-blocked-a),
@@ -1729,9 +1782,9 @@
   height: 20px;
   padding: 0 5px;
   border-radius: 999px;
-  background: #e8590c;
+  background: var(--st-plan);
   color: #fff;
-  border: 2px solid #fff;
+  border: 2px solid var(--ring-gap);
   font-size: 11px;
   font-weight: 700;
   display: flex;

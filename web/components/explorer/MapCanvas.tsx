@@ -29,11 +29,31 @@ const BAND_HEADER_H = 52;
 const INSET_X = 20;
 const INSET_TOP = 16;
 
-const PREREQ_COLOR = "#1f6fc4";
-const CHAIN_COLOR = "#8fb1dd";
-const COREQ_COLOR = "#d97706";
-const UNLOCK_SOLE_COLOR = "#16a34a";
-const UNLOCK_AMONG_COLOR = "#d97706";
+// Edge colours are SVG props, so they can't be `var()`s — read the tokens
+// (tokens.css) at runtime instead of hard-coding literals. The defaults only
+// cover the first server render.
+const EDGE_DEFAULTS = {
+  PREREQ_COLOR: "#1f6fc4",
+  CHAIN_COLOR: "#8fb1dd",
+  COREQ_COLOR: "#b45309",
+  UNLOCK_SOLE_COLOR: "#15803d",
+  UNLOCK_AMONG_COLOR: "#b45309",
+};
+function useEdgeColors() {
+  const [colors, setColors] = useState(EDGE_DEFAULTS);
+  useEffect(() => {
+    const cs = getComputedStyle(document.documentElement);
+    const v = (name: string, fallback: string) => cs.getPropertyValue(name).trim() || fallback;
+    setColors({
+      PREREQ_COLOR: v("--edge-prereq", EDGE_DEFAULTS.PREREQ_COLOR),
+      CHAIN_COLOR: v("--accent-soft", EDGE_DEFAULTS.CHAIN_COLOR),
+      COREQ_COLOR: v("--edge-coreq", EDGE_DEFAULTS.COREQ_COLOR),
+      UNLOCK_SOLE_COLOR: v("--st-ok", EDGE_DEFAULTS.UNLOCK_SOLE_COLOR),
+      UNLOCK_AMONG_COLOR: v("--st-warn", EDGE_DEFAULTS.UNLOCK_AMONG_COLOR),
+    });
+  }, []);
+  return colors;
+}
 
 const EMPTY_SET: Set<string> = new Set();
 const EMPTY_MAP: Map<string, RelationState> = new Map();
@@ -145,6 +165,7 @@ export default function MapCanvas({
   onSelect,
   onHover,
 }: Props) {
+  const { PREREQ_COLOR, CHAIN_COLOR, COREQ_COLOR, UNLOCK_SOLE_COLOR, UNLOCK_AMONG_COLOR } = useEdgeColors();
   const catalogCodes = useMemo(() => new Set(courses.map((c) => c.codeNormalized)), [courses]);
   const byId = useMemo(() => new Map(courses.map((c) => [c.id, c])), [courses]);
 
@@ -438,7 +459,7 @@ export default function MapCanvas({
       }
     }
     return out;
-  }, [courses, focusId, selectedId, relaciones, upstreamAll, directAncestors, unlockById]);
+  }, [courses, focusId, selectedId, relaciones, upstreamAll, directAncestors, unlockById, PREREQ_COLOR, CHAIN_COLOR, COREQ_COLOR, UNLOCK_SOLE_COLOR, UNLOCK_AMONG_COLOR]);
 
   const [selectionSummary, setSelectionSummary] = useState("");
   useEffect(() => {
@@ -505,21 +526,6 @@ export default function MapCanvas({
         <FitOnResize dep={panelOpen} />
         <Panel position="bottom-left">
           <ZoomControls />
-        </Panel>
-        <Panel position="top-right" className={styles.legendPanel} data-tour="legend">
-          <div className={styles.legendRow}>
-            <svg width="24" height="8" aria-hidden>
-              <line x1="1" y1="4" x2="18" y2="4" stroke={PREREQ_COLOR} strokeWidth="2" />
-              <path d="M18 1 L23 4 L18 7 Z" fill={PREREQ_COLOR} />
-            </svg>
-            <span>Prerrequisito</span>
-          </div>
-          <div className={styles.legendRow}>
-            <svg width="24" height="8" aria-hidden>
-              <line x1="1" y1="4" x2="23" y2="4" stroke={COREQ_COLOR} strokeWidth="2" strokeDasharray="4 3" />
-            </svg>
-            <span>Correquisito / puede ir al tiempo</span>
-          </div>
         </Panel>
       </ReactFlow>
       {selected && (

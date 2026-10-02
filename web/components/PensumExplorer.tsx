@@ -621,7 +621,7 @@ export default function PensumExplorer({ data, mihorarioUrl }: Props) {
           <span style={{ fontSize: 12.5, color: "#166534" }}>
             Marca los cursos que ya viste (aunque no dependan entre sí), luego confirma.
           </span>
-          <button className={styles.btnPrimary} style={{ flex: "none", background: "#16a34a" }} disabled={staged.size === 0} onClick={handleQuickFinish}>
+          <button className={styles.btnPrimary} style={{ flex: "none", background: "var(--st-ok)" }} disabled={staged.size === 0} onClick={handleQuickFinish}>
             Terminar{staged.size > 0 ? ` (${staged.size})` : ""}
           </button>
           <button className={styles.btnGhostFooter} style={{ flex: "none" }} onClick={() => { setStaged(new Set()); setQuickMode(false); }}>
