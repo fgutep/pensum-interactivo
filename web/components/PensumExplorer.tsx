@@ -33,6 +33,7 @@ import Toolbar, { type StatusFilter } from "./explorer/Toolbar";
 import MapCanvas, { type RelacionesMode } from "./explorer/MapCanvas";
 import SidePanel from "./explorer/SidePanel";
 import PlannerPanel from "./explorer/PlannerPanel";
+import BasketModal from "./explorer/BasketModal";
 import OnboardingPanel, { HintPill } from "./explorer/OnboardingPanel";
 import Tour from "./explorer/Tour";
 import QuickChooser from "./explorer/QuickChooser";
@@ -85,6 +86,8 @@ export default function PensumExplorer({ data, mihorarioUrl }: Props) {
   const [exploreTourDone, setExploreTourDone] = useState(true); // true until hydrated, so it never flashes
   const [avanceTourDone, setAvanceTourDone] = useState(true);
   const [chooserOpen, setChooserOpen] = useState(false);
+  const [basketOpen, setBasketOpen] = useState(false);
+  const [basketFocusId, setBasketFocusId] = useState<string | null>(null);
   const [setupFirstTime, setSetupFirstTime] = useState(true);
 
   useEffect(() => {
@@ -669,15 +672,26 @@ export default function PensumExplorer({ data, mihorarioUrl }: Props) {
             type="button"
             className={styles.basketFab}
             onClick={() => {
+              if (planned.size > 0) {
+                // the commitment moment: open the full checkout, focused on the
+                // selected course when it's one of the basket's
+                setBasketFocusId(selectedId && planned.has(selectedId) ? selectedId : null);
+                setBasketOpen(true);
+                return;
+              }
               setSelectedId(null);
               setPanelOpen(false);
             }}
-            aria-label={`Ver mi canasta: ${planned.size} curso${planned.size === 1 ? "" : "s"}`}
-            title="Ver mi canasta"
+            aria-label={
+              planned.size > 0
+                ? `Revisar mi canasta: ${planned.size} curso${planned.size === 1 ? "" : "s"}`
+                : "Ver mi canasta"
+            }
+            title={planned.size > 0 ? "Revisar y confirmar mi canasta" : "Ver mi canasta"}
           >
             <BasketIcon size={20} />
             <span className={styles.basketFabText}>
-              <strong>Mi canasta</strong>
+              <strong>{planned.size > 0 ? "Revisar mi canasta" : "Mi canasta"}</strong>
               <span>
                 {planned.size} curso{planned.size === 1 ? "" : "s"} ·{" "}
                 {courses.filter((c) => planned.has(c.id)).reduce((s, c) => s + c.credits, 0)} cr
@@ -725,6 +739,10 @@ export default function PensumExplorer({ data, mihorarioUrl }: Props) {
             onAssignElective={handleAssignElective}
             onToggleApproved={handleToggleApproved}
             onTogglePlanned={handleTogglePlanned}
+            onOpenBasket={(id) => {
+              setBasketFocusId(id);
+              setBasketOpen(true);
+            }}
             onSelectCourse={handleSelect}
             onCollapse={() => setPanelOpen(false)}
             onClose={() => { setSelectedId(null); setPanelOpen(false); }}
@@ -768,11 +786,31 @@ export default function PensumExplorer({ data, mihorarioUrl }: Props) {
             unlockedNextTerm={unlockedNextTerm}
             mihorarioUrl={mihorarioUrl}
             onTogglePlanned={handleTogglePlanned}
+            onOpenBasket={() => {
+              setBasketFocusId(null);
+              setBasketOpen(true);
+            }}
             onSelectCourse={handleSelect}
             onShare={handleShare}
           />
         )}
       </main>
+
+      {basketOpen && (
+        <BasketModal
+          slug={slug}
+          courses={courses}
+          planned={planned}
+          approved={effectiveApproved}
+          planTermCode={planTerm()}
+          focusCourseId={basketFocusId}
+          unlockedNextTerm={unlockedNextTerm}
+          mihorarioUrl={mihorarioUrl}
+          onClose={() => setBasketOpen(false)}
+          onRemove={(id) => handleTogglePlanned(id, null)}
+          onShare={handleShare}
+        />
+      )}
     </div>
   );
 }

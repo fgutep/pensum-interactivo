@@ -82,6 +82,7 @@ interface Props {
   onAssignElective: (slotId: string, a: ElectiveAssignment | null) => void;
   onToggleApproved: (id: string) => void;
   onTogglePlanned: (id: string, term: string | null) => void;
+  onOpenBasket: (id: string) => void;
   onSelectCourse: (id: string) => void;
   onCollapse: () => void;
   onClose: () => void;
@@ -110,6 +111,7 @@ export default function SidePanel({
   onAssignElective,
   onToggleApproved,
   onTogglePlanned,
+  onOpenBasket,
   onSelectCourse,
   onCollapse,
   onClose,
@@ -373,6 +375,11 @@ export default function SidePanel({
           <a href={link} target="_blank" rel="noopener noreferrer" className={styles.btnGhostFooter}>
             Ver secciones <ExternalIcon size={13} />
           </a>
+        )}
+        {isPlanned && mode === "progress" && (
+          <button type="button" className={`${styles.btnGhostFooter} ${styles.btnFullRow}`} onClick={() => onOpenBasket(course.id)}>
+            <BasketIcon size={14} /> Ver mi canasta y confirmar
+          </button>
         )}
       </div>
     </aside>

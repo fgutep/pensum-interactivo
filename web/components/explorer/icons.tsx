@@ -135,3 +135,12 @@ export function BasketIcon({ size = 16 }: IconProps) {
     </svg>
   );
 }
+
+export function CopyIcon({ size = 15 }: IconProps) {
+  return (
+    <svg width={size} height={size} {...base}>
+      <rect x="5.5" y="5.5" width="8" height="8" rx="1.6" />
+      <path d="M10.5 3.5v-.4A1.6 1.6 0 0 0 8.9 1.5H3.6A1.6 1.6 0 0 0 2 3.1v5.3a1.6 1.6 0 0 0 1.6 1.6h.4" />
+    </svg>
+  );
+}

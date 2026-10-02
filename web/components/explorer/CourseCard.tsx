@@ -35,7 +35,7 @@ export interface CourseCardData {
 /** Second channel for course type (shape, not just hue): Proyecto/CBU and
  * Otras/IELE sit close in colour at card size, and colour alone fails for
  * colour-blind users. 8×8, drawn in the card's secondary text colour. */
-function TypeGlyph({ group }: { group: CourseGroup }) {
+export function TypeGlyph({ group }: { group: CourseGroup }) {
   const common = { width: 8, height: 8, viewBox: "0 0 8 8", "aria-hidden": true as const, className: styles.typeGlyph };
   switch (group) {
     case "iele": // circle

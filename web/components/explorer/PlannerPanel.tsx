@@ -16,6 +16,7 @@ interface Props {
   unlockedNextTerm: Course[];
   mihorarioUrl: string;
   onTogglePlanned: (id: string, term: string | null) => void;
+  onOpenBasket: () => void;
   onSelectCourse: (id: string) => void;
   onShare: () => void;
 }
@@ -31,6 +32,7 @@ export default function PlannerPanel({
   unlockedNextTerm,
   mihorarioUrl,
   onTogglePlanned,
+  onOpenBasket,
   onSelectCourse,
   onShare,
 }: Props) {
@@ -127,10 +129,18 @@ export default function PlannerPanel({
       </div>
 
       <div className={styles.plannerFooter}>
-        {mihorarioUrl && (
-          <a href={mihorarioUrl} target="_blank" rel="noopener noreferrer" className={styles.btnPrimary}>
-            Armar horario en Mi Horario <ArrowRightIcon size={14} />
-          </a>
+        {plannedCourses.length > 0 ? (
+          // once there's something in the basket, the next step is to review
+          // and confirm it (sections, teachers, week) — the checkout modal
+          <button type="button" className={styles.btnPrimary} onClick={onOpenBasket}>
+            Revisar mi canasta · {plannedCredits} cr <ArrowRightIcon size={14} />
+          </button>
+        ) : (
+          mihorarioUrl && (
+            <a href={mihorarioUrl} target="_blank" rel="noopener noreferrer" className={styles.btnPrimary}>
+              Armar horario en Mi Horario <ArrowRightIcon size={14} />
+            </a>
+          )
         )}
         <button className={styles.iconBtn} onClick={onShare} aria-label="Compartir">
           <ShareIcon />
