@@ -124,3 +124,14 @@ export function PointerIcon({ size = 14 }: IconProps) {
     </svg>
   );
 }
+
+/** Shopping basket (handles + woven body) — the "next semester" cart. */
+export function BasketIcon({ size = 16 }: IconProps) {
+  return (
+    <svg width={size} height={size} {...base}>
+      <path d="M4.8 6.3 6.6 2.6M11.2 6.3 9.4 2.6" />
+      <path d="M1.5 6.3h13l-1.2 6.1a1.1 1.1 0 0 1-1.1.9H3.8a1.1 1.1 0 0 1-1.1-.9z" />
+      <path d="M6 8.6v2.8M8 8.6v2.8M10 8.6v2.8" />
+    </svg>
+  );
+}

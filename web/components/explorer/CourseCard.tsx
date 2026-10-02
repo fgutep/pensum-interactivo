@@ -3,7 +3,7 @@
 import { Handle, Position } from "reactflow";
 import type { Course, AvailabilityStatus } from "@/lib/types";
 import { groupOf, groupClass, toSentenceCase, termShort } from "./format";
-import { CheckIcon, LockIcon } from "./icons";
+import { BasketIcon, CheckIcon, LockIcon } from "./icons";
 import styles from "./explorer.module.css";
 
 export type RelationState =
@@ -14,7 +14,6 @@ export type RelationState =
   | "unlockSole"
   | "unlockAmong"
   | "unrelated"
-  | "hovered"
   | null;
 
 export interface CourseCardData {
@@ -29,7 +28,6 @@ export interface CourseCardData {
   isStaged: boolean;
   isJustUnlocked: boolean;
   isDimmed: boolean;
-  isTourAnchor?: boolean;
   onClick: (id: string) => void;
   onHover: (id: string | null, rect?: DOMRect) => void;
 }
@@ -54,7 +52,6 @@ export default function CourseCard({ data }: { data: CourseCardData }) {
     isStaged,
     isJustUnlocked,
     isDimmed,
-    isTourAnchor,
     onClick,
     onHover,
   } = data;
@@ -73,8 +70,7 @@ export default function CourseCard({ data }: { data: CourseCardData }) {
     mode === "progress" && status === "approved" ? styles.stApproved : "",
     mode === "progress" && isPlanned ? styles.stPlanned : "",
     mode === "progress" && !isPlanned && status === "available" ? styles.stAvailable : "",
-    mode === "progress" && status === "one-away" ? styles.stOneAway : "",
-    mode === "progress" && status === "blocked" && !isLocked ? styles.stBlocked : "",
+    mode === "progress" && !isPlanned && status !== "approved" && status !== "available" && !isLocked ? styles.stBlocked : "",
     mode === "progress" && isLocked ? styles.stAdmin : "",
   ]
     .filter(Boolean)
@@ -95,19 +91,23 @@ export default function CourseCard({ data }: { data: CourseCardData }) {
       onBlur={() => onHover(null)}
       aria-label={`${course.code} ${title}, ${course.credits} créditos${accessibleState ? `, ${accessibleState}` : ""}`}
       title={title}
-      data-tour-target={isTourAnchor ? "true" : undefined}
+      data-course-id={course.id}
     >
       <Handle type="target" position={Position.Left} style={{ opacity: 0 }} />
       {reqNumber != null && <span className={styles.numberBadge}>{reqNumber}</span>}
       {mode === "progress" && isPlanned && plannedTerm && (
-        <span className={`${styles.tag}`}>{termShort(plannedTerm)}</span>
+        <span className={`${styles.tag}`}>
+          <BasketIcon size={10} />
+          {termShort(plannedTerm)}
+        </span>
       )}
-      {mode === "progress" && !isPlanned && status === "one-away" && (
-        <span className={`${styles.tag} ${styles.tagOne}`}>falta 1</span>
+      {mode === "progress" && status === "approved" && (
+        <span className={styles.seenBadge} aria-hidden>
+          <CheckIcon size={12} />
+        </span>
       )}
       <div className={styles.cardTop}>
         <span className={styles.cardCode}>
-          {mode === "progress" && status === "approved" && <CheckIcon />}
           {mode === "progress" && isLocked && <LockIcon />}
           {course.code}
         </span>

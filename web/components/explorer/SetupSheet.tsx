@@ -14,9 +14,13 @@ interface Props {
   onSkip: () => void; // "Ahora no"
   onBlank: () => void; // "Empezar en blanco"
   onPreviewChange: (ids: string[]) => void;
+  /** first visit to Mi avance (offers "Empezar en blanco") vs. opened from Selección rápida */
+  firstTime?: boolean;
+  /** switch to the click-each-course selection tool */
+  onUseTool?: () => void;
 }
 
-export default function SetupSheet({ courses, approved, onConfirm, onSkip, onBlank, onPreviewChange }: Props) {
+export default function SetupSheet({ courses, approved, onConfirm, onSkip, onBlank, onPreviewChange, firstTime = true, onUseTool }: Props) {
   const maxSemester = useMemo(
     () => Math.max(1, ...courses.filter((c) => !c.isPlaceholder).map((c) => c.semester)),
     [courses]
@@ -26,11 +30,11 @@ export default function SetupSheet({ courses, approved, onConfirm, onSkip, onBla
 
   const lastCompleted = semester - 1;
   const priorCourses = useMemo(
-    () => courses.filter((c) => !c.isPlaceholder && c.semester < semester && c.semester >= 1),
+    () => courses.filter((c) => !c.requirementAttestationId && c.semester < semester && c.semester >= 1),
     [courses, semester]
   );
   const exceptionCandidates = useMemo(
-    () => courses.filter((c) => !c.isPlaceholder && c.semester === lastCompleted),
+    () => courses.filter((c) => !c.requirementAttestationId && c.semester === lastCompleted),
     [courses, lastCompleted]
   );
 
@@ -58,7 +62,7 @@ export default function SetupSheet({ courses, approved, onConfirm, onSkip, onBla
     <aside className={styles.panel} style={{ boxShadow: "-12px 0 32px rgba(16, 24, 40, 0.08)" }}>
       <div className={styles.panelHeader}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <span className={styles.lbl}>Primera vez en Mi avance</span>
+          <span className={styles.lbl}>{firstTime ? "Primera vez en Mi avance" : "Selección rápida · por semestre"}</span>
           <button type="button" className={styles.descToggle} onClick={onSkip}>
             Ahora no
           </button>
@@ -141,8 +145,13 @@ export default function SetupSheet({ courses, approved, onConfirm, onSkip, onBla
         <p style={{ fontSize: 11, color: "var(--muted-2)", textAlign: "center", margin: 0 }}>
           Después cambias cualquier curso con un clic.
         </p>
+        {onUseTool && (
+          <button type="button" className={styles.descToggle} style={{ alignSelf: "center" }} onClick={onUseTool}>
+            Prefiero elegir curso por curso
+          </button>
+        )}
         <button type="button" className={styles.descToggle} style={{ alignSelf: "center" }} onClick={onBlank}>
-          Empezar en blanco
+          {firstTime ? "Empezar en blanco" : "Cancelar"}
         </button>
       </div>
     </aside>

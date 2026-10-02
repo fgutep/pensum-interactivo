@@ -18,7 +18,6 @@ export type StatusFilter = "approved" | "available" | "one-away" | "blocked" | "
 const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
   { key: "approved", label: "Aprobadas" },
   { key: "available", label: "Disponibles" },
-  { key: "one-away", label: "Les falta 1" },
   { key: "blocked", label: "Bloqueadas" },
   { key: "admin", label: "Regla administrativa" },
 ];
@@ -35,7 +34,6 @@ interface Props {
   quickMode: boolean;
   onQuickToggle: () => void;
   onReset: () => void;
-  tourTargetRelaciones?: boolean;
 }
 
 export default function Toolbar({
@@ -50,13 +48,12 @@ export default function Toolbar({
   quickMode,
   onQuickToggle,
   onReset,
-  tourTargetRelaciones,
 }: Props) {
   if (mode === "explore") {
     return (
       <div className={styles.toolbar}>
         <span className={styles.lbl}>Mostrar</span>
-        <div className={styles.chipRow}>
+        <div className={styles.chipRow} data-tour="groups">
           {EXPLORE_GROUPS.map(({ group, dashed }) => {
             const off = hiddenGroups.has(group);
             return (
@@ -83,7 +80,7 @@ export default function Toolbar({
           className={styles.segSm}
           role="group"
           aria-label="Relaciones"
-          data-tour-target={tourTargetRelaciones ? "true" : undefined}
+          data-tour="relaciones"
         >
           <button
             type="button"
@@ -124,7 +121,7 @@ export default function Toolbar({
   return (
     <div className={styles.toolbar}>
       <span className={styles.lbl}>Estado</span>
-      <div className={styles.chipRow}>
+      <div className={styles.chipRow} data-tour="status">
         {STATUS_FILTERS.map(({ key, label }) => {
           const off = hiddenStatuses.has(key);
           return (
@@ -146,6 +143,7 @@ export default function Toolbar({
         type="button"
         className={`${styles.ghostBtn} ${quickMode ? styles.active : ""}`}
         onClick={onQuickToggle}
+        data-tour="quick"
         aria-pressed={quickMode}
       >
         Selección rápida

@@ -641,6 +641,13 @@
   box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--accent);
 }
 
+/* Hover ring is pure CSS (no React state → no re-render of the other cards).
+   :where() keeps specificity at (0,1,0) and it sits above the relation/status
+   rules, so those still win when they apply. */
+:where(.card):hover {
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--ink);
+}
+
 .typeIele { --card-color: var(--t-iele); }
 .typeCb { --card-color: var(--t-cb); }
 .typeOtr { --card-color: var(--t-otr); }
@@ -680,12 +687,11 @@
   overflow: hidden;
 }
 
-/* slot / placeholder variants — outline only */
+/* slot / placeholder variants — same solid card as a real course, only the
+   colour (--card-color) differs, so every node reads and clicks the same. */
 .slotCard {
-  background: #fff;
-  border: 1.5px dashed var(--card-color);
-  color: var(--card-color);
-  box-shadow: none;
+  background: var(--card-color);
+  color: #fff;
 }
 .slotEle { --card-color: var(--t-ele); }
 .slotCbu { --card-color: var(--t-cbu); }
@@ -721,6 +727,7 @@
   border: 2px solid #fff;
   display: flex;
   align-items: center;
+  gap: 3px;
 }
 .tag.tagOne {
   background: var(--st-one-text);
@@ -734,7 +741,9 @@
 
 /* relation states (Explorar) */
 .selected {
-  box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--ink), 0 10px 24px rgba(16, 24, 40, 0.28);
+  box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--ink), 0 12px 28px rgba(16, 24, 40, 0.34);
+  transform: translateY(-2px);
+  z-index: 6;
 }
 .directPrereq {
   box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--accent);
@@ -756,23 +765,32 @@
   opacity: 0.34;
   filter: saturate(0.3);
 }
-.hovered {
-  box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--ink);
-}
 
 /* Mi avance status states */
 .stApproved {
+  --card-color: #15803d;
   box-shadow: none;
   filter: none;
+}
+.seenBadge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: #fff;
+  color: #15803d;
+  border: 2px solid #15803d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .stAvailable {
   box-shadow: 0 0 0 4px var(--st-available);
 }
 .stPlanned {
   box-shadow: 0 0 0 4px var(--st-available);
-}
-.stOneAway {
-  box-shadow: 0 0 0 4px var(--st-one);
 }
 .stBlocked {
   background: repeating-linear-gradient(
@@ -831,7 +849,7 @@
   to { transform: translateX(160%) skewX(-18deg); opacity: 0; }
 }
 .justUnlocked {
-  animation: unlockPop 1.9s cubic-bezier(0.22, 1, 0.36, 1);
+  animation: unlockPop 1.8s cubic-bezier(0.22, 1, 0.36, 1) 3;
   z-index: 5;
 }
 .justUnlocked::after {
@@ -841,7 +859,7 @@
   border-radius: 8px;
   pointer-events: none;
   background: linear-gradient(100deg, transparent 35%, rgba(255, 255, 255, 0.7) 50%, transparent 65%);
-  animation: unlockGlare 1s ease-out 0.1s both;
+  animation: unlockGlare 1s ease-out 0.1s 3 both;
 }
 @media (prefers-reduced-motion: reduce) {
   .justUnlocked, .justUnlocked::after {
@@ -1615,4 +1633,203 @@
 /* ---------- elective picker restyle ---------- */
 .slotPanelSection {
   margin-top: 16px;
+}
+
+/* ---------- Selección rápida chooser ---------- */
+.chooserBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(17, 22, 32, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.chooser {
+  width: min(560px, 100%);
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 16px 40px rgba(16, 24, 40, 0.28);
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+}
+.chooserTitle {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink);
+  text-align: center;
+}
+.chooserGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+}
+@media (max-width: 520px) {
+  .chooserGrid { grid-template-columns: 1fr; }
+}
+.chooserCard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  padding: 14px;
+  border-radius: 10px;
+  border: 1.5px solid var(--line-control);
+  background: #fff;
+  font-family: inherit;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.chooserCard strong { font-size: 14.5px; color: var(--ink); }
+.chooserCard:hover, .chooserCard:focus-visible {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+  outline: none;
+}
+.chooserKicker {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+/* ---------- Shopping basket (next-semester plan) ---------- */
+.basketHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.basketBadge {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: var(--accent-tint);
+  color: var(--accent);
+  border: 1.5px solid var(--accent-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.basketCount {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #e8590c;
+  color: #fff;
+  border: 2px solid #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: basketBump 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes basketBump {
+  0% { transform: scale(0.4); }
+  100% { transform: scale(1); }
+}
+.basketHeadText {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+.basketTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.basketSub {
+  font-size: 11.5px;
+  color: var(--muted-2);
+}
+.basketCredits {
+  margin-left: auto;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-tint);
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+.basketEmpty {
+  margin-top: 12px;
+  border: 1.5px dashed var(--accent-border);
+  background: #fafcff;
+  border-radius: 14px;
+  padding: 18px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+  color: var(--accent-soft);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.basketEmpty strong { color: var(--ink-2); font-size: 13px; }
+.basketEmpty span { color: var(--muted); }
+.suggestAddPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 1.5px solid var(--accent);
+  background: #fff;
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.suggestAddPill:hover { background: var(--accent); color: #fff; }
+
+.basketFab {
+  position: absolute;
+  left: 64px;
+  bottom: 20px;
+  z-index: 7;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 18px 9px 14px;
+  border: none;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 8px 22px rgba(31, 111, 196, 0.38);
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.basketFab:hover { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(31, 111, 196, 0.45); }
+.basketFabText {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.2;
+  font-size: 11.5px;
+}
+.basketFabText strong { font-size: 13px; }
+.basketFab .basketCount { top: -6px; right: -4px; }
+@media (prefers-reduced-motion: reduce) {
+  .basketCount { animation: none; }
 }
