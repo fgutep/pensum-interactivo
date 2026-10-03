@@ -165,10 +165,6 @@ export default function TopBar({
       <button type="button" className={styles.iconBtn} onClick={onShare} data-tour="share" aria-label="Compartir" title={shareFeedback ?? "Compartir"}>
         <ShareIcon />
       </button>
-
-      <Link href={`/v1/p/${slug}`} className={styles.versionLink} title="Comparar con el diseño anterior">
-        Ver v1
-      </Link>
     </div>
   );
 }
