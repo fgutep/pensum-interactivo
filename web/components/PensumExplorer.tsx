@@ -27,7 +27,7 @@ import {
   savePlannedToStorage,
   type ElectiveAssignments,
 } from "@/lib/persistence";
-import GradoChecklist from "@/components/legacy/GradoChecklist";
+import GradoChecklist from "./explorer/GradoChecklist";
 import TopBar from "./explorer/TopBar";
 import Toolbar, { type StatusFilter } from "./explorer/Toolbar";
 import MapCanvas, { type RelacionesMode } from "./explorer/MapCanvas";

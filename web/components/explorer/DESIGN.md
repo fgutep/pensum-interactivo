@@ -1,13 +1,13 @@
 # Explorer — CSS & design choices
 
-Short rationale for how the redesigned explorer (`/`) is styled. The legacy
-view (`/v1`) is untouched and shares none of this.
+Short rationale for how the explorer (`/p/[slug]`) is styled. (The earlier
+design and its `/v1` route have been removed.)
 
 **Files**
 
 | File | Role |
 |---|---|
-| `tokens.css` | Global `:root` design tokens + font import. Plain CSS, not a module (a bare `:root` rule isn't a valid CSS Module selector). Imported only by `PensumExplorer.tsx`, so it never reaches `/v1`. |
+| `tokens.css` | Global `:root` design tokens + font import. Plain CSS, not a module (a bare `:root` rule isn't a valid CSS Module selector). Imported only by `PensumExplorer.tsx`. |
 | `explorer.module.css` | Everything else, scoped per class (~1800 lines, numbered sections: shell, top bar, card, side panel, planner, tour…). |
 
 ## Principles

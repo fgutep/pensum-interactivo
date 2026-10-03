@@ -8,7 +8,7 @@ import type {
   ElectiveDTO,
   OfferingBadge,
 } from "@/lib/types";
-import ElectivePicker from "@/components/legacy/ElectivePicker";
+import ElectivePicker from "./ElectivePicker";
 import ChainMiniature from "./ChainMiniature";
 import RequirementTree from "./RequirementTree";
 import { groupClass, groupColor, groupOf, spaceCode, toSentenceCase, nextTermCode, nextTermShort, termShort } from "./format";

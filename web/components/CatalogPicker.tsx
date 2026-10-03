@@ -23,14 +23,7 @@ function trackOf(c: PickerCatalog): Track {
   return /prec/i.test(c.variantLabel) ? "precalculo" : "standard";
 }
 
-export default function CatalogPicker({
-  catalogs,
-  basePath = "/p",
-}: {
-  catalogs: PickerCatalog[];
-  /** where a row links to, e.g. "/v1/p" for the frozen legacy explorer. */
-  basePath?: string;
-}) {
+export default function CatalogPicker({ catalogs }: { catalogs: PickerCatalog[] }) {
   const [track, setTrack] = useState<Track>("standard");
 
   const hasPrecalculo = useMemo(
@@ -101,7 +94,7 @@ export default function CatalogPicker({
                   return (
                     <Link
                       className="picker-row"
-                      href={`${basePath}/${c.slug}`}
+                      href={`/p/${c.slug}`}
                       key={c.slug}
                       style={{ ["--accent" as string]: accent }}
                     >
