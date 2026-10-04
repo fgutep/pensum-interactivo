@@ -241,3 +241,53 @@ model AuditLog {
   after      Json?
   createdAt  DateTime @default(now())
 }
+
+/// An admin/coordinator account for the /administrador panel. Every user has
+/// identical full access — there are no roles. Passwords are scrypt-hashed
+/// (see lib/auth/password.ts). The super-admin (master-secret holder) manages
+/// these from /administrador/super.
+model AdminUser {
+  id           Int       @id @default(autoincrement())
+  username     String    @unique // case-insensitive compare done in code (lowercased)
+  displayName  String?   @db.VarChar(200)
+  passwordHash String    @db.VarChar(255) // scrypt derived key, hex
+  passwordSalt String    @db.VarChar(255) // per-user random salt, hex
+  disabled     Boolean   @default(false)
+  mustReset    Boolean   @default(false) // set when the super-admin resets the password
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  resetTokens PasswordResetToken[]
+
+  @@index([disabled])
+}
+
+/// Singleton-ish key/value store for auth bootstrap state. Rows today:
+///   "master_secret_hash"  — scrypt hash of the normalized 12-word mnemonic
+///   "master_secret_salt"  — its salt
+///   "setup_completed_at"  — ISO timestamp; its presence closes the setup URL
+/// (first-visitor-wins: setup is reachable only while no users exist AND this
+///  key is unset).
+model AdminSetting {
+  key       String   @id @db.VarChar(100)
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+}
+
+/// A single-use password reset grant minted by the super-admin for a locked-out
+/// user. The super-admin hands the raw token (or a chosen temp password) to the
+/// user out-of-band; only its hash is stored.
+model PasswordResetToken {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  tokenHash String    @db.VarChar(255)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdBy String? // actor who issued it ("super")
+  createdAt DateTime  @default(now())
+
+  user AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}

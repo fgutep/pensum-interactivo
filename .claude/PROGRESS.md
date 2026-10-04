@@ -554,7 +554,67 @@ format for the P2 importer (not consumed by the current `seed.ts`).
   corrected `PENSUMS` Excel (M-2) so the rebuild reproduces the same fixes
   structurally, or re-apply the 2026-09-24 hand patches after rebuilding.
 
+**Session 2026-10-03 — admin auth rework: multi-user accounts + one-time setup +
+12-word master-secret super-panel (done, verified end-to-end). Branch
+`admin-auth-and-experience` off `mysql-migration`.**
+Replaces the single shared `ADMIN_PASSWORD` with DB-backed accounts. Designed for
+the Docker monolith deploy (app + MySQL in one stack). Full doc:
+[`docs/admin-auth.md`](../docs/admin-auth.md).
+- **Schema** (migration `20261003221513_add_admin_auth`): `AdminUser`
+  (username unique/lowercased, scrypt `passwordHash`+`passwordSalt`, `disabled`,
+  `mustReset`, `lastLoginAt`, `displayName`), `AdminSetting` (key/value — rows
+  `master_secret_hash`/`_salt`, `setup_completed_at`), `PasswordResetToken`
+  (reserved for a future token-link reset; unused today — recovery goes through
+  the super-panel).
+- **Crypto** (`lib/auth/`): `password.ts` rewritten to **scrypt** (`node:crypto`,
+  N=2¹⁵, per-secret salt) — `hashSecret`/`verifySecret`, `passwordPolicyError`
+  (min 8). `mnemonic.ts` + bundled canonical 2048-word `bip39Wordlist.ts` →
+  real **BIP39** 12-word phrase (128-bit entropy + 4-bit SHA-256 checksum);
+  `generateMnemonic`/`normalizeMnemonic`/`isValidMnemonic`. The old env-based
+  `checkAdminPassword`/`adminPasswordConfigured` are gone. `users.ts` =
+  all AdminUser/AdminSetting data access (`isInitialized`, `completeSetup`,
+  `authenticate`, `verifyMasterSecret`, `rotateMasterSecret`, user CRUD,
+  `changeOwnPassword`, `adminResetPassword`).
+- **Sessions** (`session.ts`): two signed Edge-safe HMAC cookies — `pensum_admin`
+  (payload carries the **username**, 12h) and `pensum_super` (master-secret
+  unlock, 30 min). `actor.ts` `currentActor()` reads the username; `writeAudit`
+  now **auto-resolves the actor** from it when not passed, so every existing
+  mutation call site attributes to the real user with zero changes.
+- **Bootstrap:** `/administrador/setup` is public **only while uninitialized**
+  (zero users + no `setup_completed_at`) — **first-visitor-wins**, no SETUP_TOKEN
+  (chosen for the trusted single-tenant monolith). Creates the first user,
+  generates the master secret, shows it once (ack required), writes
+  `setup_completed_at`, logs the user in. After that it redirects to login / API
+  returns 409.
+- **Login/middleware:** login is username+password (case-insensitive); middleware
+  gates `/administrador/*` + `/api/admin/*`, lets setup/login/logout through, and
+  additionally requires `pensum_super` for the super area (`/administrador/super`
+  landing + `/api/admin/super/unlock` excepted so you can get the cookie).
+- **Super-panel** (`(panel)/super/`): unlock via 12 words → list/create/enable/
+  disable/delete users, **reset a user's password** (sets `mustReset`, super-admin
+  hands temp pw out-of-band), **rotate the master secret** (new phrase shown once,
+  old stops working). Lockout guards: can't delete the last user or disable the
+  last active one.
+- **Self-service** (`(panel)/cuenta/`): change own password (verify current,
+  clears `mustReset`). No email reset (no SMTP) — locked-out users recovered by
+  the super-admin.
+- **Env/docs:** `ADMIN_PASSWORD` removed from `.env.example` + `.env` (unused now);
+  `SESSION_SECRET` stays. New `docs/admin-auth.md`; `docs/README.md`, `CLAUDE.md`,
+  `docs/branches-and-releases.md` updated.
+- **Verified:** `npm run build` passes (all new routes + 34.7 kB middleware
+  registered). Full dev-server flow via Invoke-WebRequest with a cookie jar:
+  uninitialized→setup (12-word phrase + cookie)→initialized→setup-lockout(409)→
+  login(wrong 401 / correct 200, case-insensitive)→authed(200)→super-API-without-
+  cookie(403)→unlock(wrong 401 / right 200 + super cookie)→list/create user(200)→
+  dup(409)→reset-password→login shows `mustReset:true`→self-change(wrong-current
+  401 / correct 200)→re-login `mustReset:false`→delete non-last(200)/last(409)→
+  disable-last-active(409)→rotate master (old phrase 401, new 200). `AuditLog`
+  rows confirmed attributed to `felipe`/`mauricio` (not generic `admin`) across
+  setup/login/unlock/create/reset/change/delete/rotate. Local auth tables reset
+  to uninitialized afterward.
+
 ## Next
+
 
 **Apply the Excel_Registro-based rebuild to prod, correctly.** Get Mauricio's
 corrected `PENSUMS PREGRADO` Excel (the `IELE3106`→`IELE3200` slot fix, M-2)

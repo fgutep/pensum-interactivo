@@ -14,7 +14,9 @@ Read `PROGRESS.md` first — it lists what's done (P0 data pipeline, P1 student 
 what's next (P2 admin, P3 Docker), and the gotchas.
 
 - **Docs:** [`docs/`](docs/README.md) — branches & releases (MySQL monolith is the official
-  release; `main`/Vercel is a temporary preview), the October 2026 design pass, user flows.
+  release; `main`/Vercel is a temporary preview), **admin auth** (DB-backed multi-user
+  accounts + one-time setup + 12-word master-secret super-panel — see
+  [`docs/admin-auth.md`](docs/admin-auth.md)), the October 2026 design pass, user flows.
 
 ## Layout
 
@@ -41,6 +43,11 @@ npm run seed         # first load: DB from the two .xlsx + course API (~60s).
                      # SEED_REBUILD_COURSES=1 / SEED_RESET_META=1.
 npm run dev          # http://localhost:3000
 ```
+
+**First admin login:** there is no shared `ADMIN_PASSWORD`. On first boot the app is
+*uninitialized* — open `/administrador/setup` (first-visitor-wins) to create the first
+user and receive the 12-word master secret for the super-panel. Full flow:
+[`docs/admin-auth.md`](docs/admin-auth.md).
 
 Other scripts (all in `web/`):
 - `npm run scrape:desc` — course descriptions from smartcatalogiq → `Course.description` (standalone; the seed never touches it). Docs: `scripts/scrapeDescriptions.md`.

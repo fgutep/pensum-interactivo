@@ -86,7 +86,7 @@ Notes
 | `DATABASE_URL` | MySQL (release) or pooled Postgres (Vercel) |
 | `DIRECT_URL` | Postgres/Neon only — direct connection for `prisma migrate` |
 | `OFFERINGS_TERM` | `auto` (default: live API → calendar) or a pinned `YYYYPP`. **Vercel still pins `202620`.** |
-| `SESSION_SECRET`, `ADMIN_PASSWORD` | admin panel auth |
+| `SESSION_SECRET` | signs the admin + super-panel session cookies (admin accounts live in the DB — one-time setup at `/administrador/setup`, no shared password; see [`admin-auth.md`](admin-auth.md)) |
 | `UNIANDES_API_URL` | offering API (details URL derived from it) |
 | `MIHORARIO_URL` | Mi Horario base URL for the "Armar horario" links |
 
