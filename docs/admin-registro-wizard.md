@@ -143,7 +143,7 @@ render identically (byte-compare payload before/after for untouched catalogs).
 
 Because that is easy to forget, the wizard and the rest of the admin now **alert on every difference between the document and the official API data** — see [`admin-discrepancies.md`](admin-discrepancies.md): the Vincular/Aplicar steps mark each planned change as *students will see it / agrees with the API / differs from the API and students won't see it*, and the Resolver step warns when the official API still lists a code the registro lacks (`FISI1028` — a code with no row in the 3-term window is **not** necessarily retired, so "keep" is the safe default; the first draft's help text wrongly suggested such codes were retired).
 
-Phase B still needs an explicit rule for admin-authored edges (proposal: a field pinned in `lockedFields` wins over the API; otherwise API, then document).
+Phase B does **not** change this precedence (confirmed: prefer the API, only fall back to the document). Admin-authored edges are document data, so they reach students only for courses with no usable API data; the Phase B canvas must therefore show the official API requirement as a read-only layer and raise the same discrepancy alerts.
 
 ### Verification performed (2026-10-03/04)
 

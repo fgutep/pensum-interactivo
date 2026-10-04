@@ -621,7 +621,7 @@ Phase B (separate drag-and-drop authoring canvas; the student `MapCanvas`/`Pensu
 - **Write safety:** single transaction; `pre-registro` snapshot per changed catalog; never sets `manuallyEdited`; replace/drop/rebind choices pin `lockedFields`; `manuallyEdited`/locked rows are skipped unless "forzar"; **undo** restores exact row state (the snapshot can't — it stores the student view, where live API prereqs beat document text), all-or-nothing, including SQL `NULL` vs JSON `null`.
 - **Data:** migration `20261004011952_add_registro_import` (`RegistroImport`, `RegistroCourse`; additive). `lib/registro/*`, `app/api/admin/registro/*`, `components/admin/registro/*`. New `npm run test`.
 - **Verified:** 75 unit tests (incl. 9 on the real file; mutation check), 36 service-integration checks, 35 browser E2E checks (Edge/puppeteer-core), scratch DB vs real DB = 0 differing `CatalogCourse` rows after apply+undo. Real local DB never written. Bugs found along the way are listed in the doc.
-- **For Phase B:** the student payload prefers live API prereqs over the stored document text, which is what this wizard writes — Phase B needs an explicit precedence rule for admin-authored edges. Applying registro to the seeded catalogs is currently a no-op (same source as the seed). One local row is `manuallyEdited` (ielc-cbu3 `IELE3200`, the 2026-09-24 patch) and is skipped by the wizard.
+- **For Phase B:** the student payload prefers live API prereqs over the stored document text, which is what this wizard writes; that precedence is intended and stays (see `docs/admin-discrepancies.md`). Applying registro to the seeded catalogs is currently a no-op (same source as the seed). One local row is `manuallyEdited` (ielc-cbu3 `IELE3200`, the 2026-09-24 patch) and is skipped by the wizard.
 - **Windows gotchas:** editing UTF-8 with PowerShell `Get-Content/Set-Content` double-encodes accents; piping `mysqldump` through PowerShell corrupts them too (copy DBs inside the container).
 
 **Session 2026-10-04 (cont.) — discrepancy alerts: document vs official API (done, verified). Same branch.** Full doc: [`docs/admin-discrepancies.md`](../docs/admin-discrepancies.md).
@@ -632,7 +632,7 @@ Phase B (separate drag-and-drop authoring canvas; the student `MapCanvas`/`Pensu
 - **Found in the student payload (reported, not changed):** `coreqText` is always the document's and `BasketModal` prints it, so a document corequisite can reach students in the basket even when the API governs; and `prereqText` keeps the document text when the API says "none" (tree empty).
 - **Verification:** 115 unit tests; equivalence with `buildCatalogPayload` on all courses (real DB + a scratch copy with planted edge cases — the real data alone did **not** catch a deliberate mutation, the planted data does); 29 browser checks (counts on page = chips = badges); real-data report read-only.
 - **Lessons:** run mutation checks *sequentially* (edit → run → restore → run) — a batched edit+test can race; real data doesn't exercise rare branches, plant scenarios.
-- **Phase B precedence proposal (needs a decision):** a field pinned in `lockedFields` wins over the API; otherwise API, then document.
+- **Phase B precedence (decided):** unchanged — prefer the API, only fall back to the document. Admin-authored edges are document data and reach students only where the API has no data; the Phase B canvas shows the API requirement as a read-only layer and raises the same discrepancy alerts.
 
 ## Next
 
