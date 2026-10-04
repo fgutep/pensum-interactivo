@@ -624,6 +624,16 @@ Phase B (separate drag-and-drop authoring canvas; the student `MapCanvas`/`Pensu
 - **For Phase B:** the student payload prefers live API prereqs over the stored document text, which is what this wizard writes — Phase B needs an explicit precedence rule for admin-authored edges. Applying registro to the seeded catalogs is currently a no-op (same source as the seed). One local row is `manuallyEdited` (ielc-cbu3 `IELE3200`, the 2026-09-24 patch) and is skipped by the wizard.
 - **Windows gotchas:** editing UTF-8 with PowerShell `Get-Content/Set-Content` double-encodes accents; piping `mysqldump` through PowerShell corrupts them too (copy DBs inside the container).
 
+**Session 2026-10-04 (cont.) — discrepancy alerts: document vs official API (done, verified). Same branch.** Full doc: [`docs/admin-discrepancies.md`](../docs/admin-discrepancies.md).
+- **Confirmed intended precedence:** students get the API tree when it exists; if the API synced fine but lists no requirement → none (document ignored); only otherwise the document (`CatalogCourse.prereq*/coreq*`). ≈ 85 % of courses are API-governed, so Registro imports and manual edits are invisible to students for most courses. Mirrored (not refactored — `catalogPayload.ts` untouched) in `lib/discrepancy/report.ts` and **locked to the real payload** by `payloadEquivalence.test.ts`.
+- **Alerts:** new `/administrador/discrepancias` (sidebar), `⚠ N` badge per plan in the catalog list, inline alert + "students won't see this edit" warning in the course editor, and in the Registro wizard: Resolver warns when the official API still lists a "missing" code (`FISI1028` is **not** retired — fixed the misleading help text), Vincular/Aplicar mark each change as visible / agrees with API / differs and won't be seen. One component, one wording function, read-only.
+- **Statuses:** match · soft-only (`*` only) · differs (warn) · doc-hidden (warn) · api-only · unverified (reason). Cause: pinned 🔒 / edited / imported. Trees compared canonically (order/nesting/duplicates ignored).
+- **Real data:** 10 warnings per plan — 5× `FISI1028` drops from Registro run #1 (pinned), 4× `MATE…C*` suffix tokens (imported, pre-existing), 1× `IELE2002` coreq `IELE2002T` (pre-existing). None change what students see today.
+- **Found in the student payload (reported, not changed):** `coreqText` is always the document's and `BasketModal` prints it, so a document corequisite can reach students in the basket even when the API governs; and `prereqText` keeps the document text when the API says "none" (tree empty).
+- **Verification:** 115 unit tests; equivalence with `buildCatalogPayload` on all courses (real DB + a scratch copy with planted edge cases — the real data alone did **not** catch a deliberate mutation, the planted data does); 29 browser checks (counts on page = chips = badges); real-data report read-only.
+- **Lessons:** run mutation checks *sequentially* (edit → run → restore → run) — a batched edit+test can race; real data doesn't exercise rare branches, plant scenarios.
+- **Phase B precedence proposal (needs a decision):** a field pinned in `lockedFields` wins over the API; otherwise API, then document.
+
 ## Next
 
 

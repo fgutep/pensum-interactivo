@@ -32,7 +32,7 @@ uses for autocomplete/validation.
 | Code formats | `AAAA-9999`, `AAAA-9999A` (lab/practice suffix), `AAA9-9999`; prereq text uses `IELE 2100`, soft marker `MATE 2210*`, fused tokens `ENGL7` `INLE4` `RLEC1` `RLEN1` | reuse `normalizeCode` + `requirementParser` (already handle all of these) |
 | Prereq grammar | only `Y` / `O` and parentheses | existing parser is sufficient |
 | Pensum deps outside the dept | MATE, FISI, IIND, ISIS, DERE, LENG, ESCR, LITE… (27 codes referenced by in-scope rows) | scope = department rows **plus closure** |
-| Gaps | 5 codes bound in the DB have no registro row at all (`IELE2150 IELE3118 IELE3218 IELE3502 MATE1201`); 12 referenced codes have no row in the window (`FISI1028 IELE1006 IELE1010 IELE2210 LENG1103 LENG1501 LENG1512 LENG2999 LENG3001 LITE1611 LITE1622 MATE1257`) | these are the real test cases for the "resolve" step |
+| Gaps | 5 codes bound in the DB have no registro row at all (`IELE2150 IELE3118 IELE3218 IELE3502 MATE1201`); 12 referenced codes have no row in the window (`FISI1028 IELE1006 IELE1010 IELE2210 LENG1103 LENG1501 LENG1512 LENG2999 LENG3001 LITE1611 LITE1622 MATE1257`) | these are the real test cases for the "resolve" step. (The 12 was measured over all department rows; `LENG3001` is only referenced by department courses that are not bound in any plan, so the wizard raises 11 blocking items — see "Decisions made while building".) |
 | Name/credit drift inside the window | none | still detected and surfaced generically |
 
 ## Rules
@@ -139,7 +139,11 @@ render identically (byte-compare payload before/after for untouched catalogs).
 
 ### What the student sees (important for Phase B)
 
-`buildCatalogPayload` prefers the live course-API prerequisites when a course was offered this term and only falls back to `CatalogCourse.prereqText/prereqTree` otherwise. The wizard writes the *fallback*. Applying registro data to the seeded catalogs is a no-op today (the seed was built from the same file). Phase B needs an explicit precedence decision for admin-authored edges.
+`buildCatalogPayload` prefers the live course-API prerequisites when a course was offered this term and only falls back to `CatalogCourse.prereqText/prereqTree` otherwise. **This precedence is the intended behaviour** (confirmed by the coordinator): *prefer the API, only fall back to the document*. The wizard writes the *fallback*, so its changes are visible to students only for courses with no usable API data (≈ 15 %). Applying registro data to the seeded catalogs is a no-op today (the seed was built from the same file).
+
+Because that is easy to forget, the wizard and the rest of the admin now **alert on every difference between the document and the official API data** — see [`admin-discrepancies.md`](admin-discrepancies.md): the Vincular/Aplicar steps mark each planned change as *students will see it / agrees with the API / differs from the API and students won't see it*, and the Resolver step warns when the official API still lists a code the registro lacks (`FISI1028` — a code with no row in the 3-term window is **not** necessarily retired, so "keep" is the safe default; the first draft's help text wrongly suggested such codes were retired).
+
+Phase B still needs an explicit rule for admin-authored edges (proposal: a field pinned in `lockedFields` wins over the API; otherwise API, then document).
 
 ### Verification performed (2026-10-03/04)
 

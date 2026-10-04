@@ -16,7 +16,7 @@ const KIND_HELP: Partial<Record<UnresolvedItem["kind"], string>> = {
   "bound-missing":
     "El plan usa este código pero el registro no lo tiene en la ventana (renombrado, retirado o aún no abierto). Déjalo como está o reasígnalo a su código actual.",
   "ref-missing":
-    "Un curso del departamento lo pide como requisito, pero el registro no lo tiene en la ventana (típicamente un código retirado). Reemplázalo por su equivalente, quítalo de la expresión o déjalo tal cual.",
+    "Un curso del departamento lo pide como requisito, pero el registro no lo tiene en la ventana de semestres. Eso NO significa que esté retirado: puede simplemente no haberse dictado en esos 3 semestres (la API oficial a veces lo sigue listando — se avisa abajo). Lo más seguro es dejarlo como está; reemplazarlo solo si sabes que es equivalente; quitarlo hace el requisito más estricto.",
   "token-nocourse": "Se conservan literalmente, como en el registro.",
   "name-drift": "Por defecto se conserva el nombre del plan.",
   "credits-drift": "Por defecto se conservan los créditos del plan.",
@@ -190,6 +190,13 @@ export default function StepResolve({ view, reload, go }: StepProps) {
                     <span className="admin-pair">{ACTION_LABEL[effective.action]}</span>
                   )}
                 </div>
+                {it.kind === "ref-missing" && (view.apiMentions[it.key]?.length ?? 0) > 0 && (
+                  <div className="disc-alert warn" role="status">
+                    ⚠ La API oficial de este semestre <b>todavía lista <code>{it.code}</code></b> en los requisitos de{" "}
+                    {view.apiMentions[it.key].join(", ")}. No está retirado: solo no tiene fila en la ventana del
+                    registro. “Quitar” o “Reemplazar” haría que el documento difiera de lo que ven los estudiantes.
+                  </div>
+                )}
                 {sugg.length > 0 && (
                   <div className="admin-pair">
                     Parecidos en el registro:{" "}

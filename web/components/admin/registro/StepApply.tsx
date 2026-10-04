@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api, type StepProps } from "./RegistroWizard";
+import { impactCounts } from "./StepLink";
 
 interface ApplyView {
   perCatalog: { slug: string; changed: number; skipped: number; snapshotId: number | null }[];
@@ -37,6 +38,7 @@ function ApplyStep({ view, reload, go, sel }: StepProps) {
   const [error, setError] = useState<string | null>(null);
 
   const mine = view.plan.courses.filter((c) => sel.slugs.includes(c.slug));
+  const impact = impactCounts(view, sel.slugs);
   const changed = mine.filter((c) => c.changes.length);
   const skipped = mine.filter((c) => c.skipped);
   const blocked = view.pending.length > 0;
@@ -92,6 +94,20 @@ function ApplyStep({ view, reload, go, sel }: StepProps) {
             Se guarda una copia (<code>pre-registro</code>) de cada catálogo que cambie, y el estado exacto de cada fila
             para poder <b>deshacer</b>.
           </li>
+          {(impact.visible + impact.agree + impact.differ) > 0 && (
+            <li>
+              Visibilidad para estudiantes: <b>{impact.visible}</b> cambio(s) de requisitos se verán (sin datos de la
+              API), <b>{impact.agree}</b> coinciden con la API oficial
+              {impact.differ > 0 ? (
+                <>
+                  , y <b style={{ color: "#b45309" }}>{impact.differ}</b> difieren de la API y <b>no</b> se verán — quedarán
+                  como una discrepancia en <Link href="/administrador/discrepancias">Discrepancias</Link>
+                </>
+              ) : (
+                "."
+              )}
+            </li>
+          )}
           <li>Las ediciones que fijaste (reemplazar / quitar / reasignar) quedan 🔒 protegidas de futuras importaciones.</li>
         </ul>
         {blocked && (

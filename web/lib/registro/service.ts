@@ -17,6 +17,8 @@ import { analyzeRegistro, pendingDecisions, planLinks, validateResolutions, type
 import { parseRegistroWorkbook } from "./parse";
 import { reduceRegistro } from "./reduce";
 import { parseCoreq } from "./requirements";
+import { loadCourseInputs } from "../discrepancy/service";
+import { annotateCourse, apiMentions, type StudentImpact } from "../discrepancy/wizard";
 import {
   DEFAULT_SCOPE,
   type CatalogInput,
@@ -218,6 +220,10 @@ export interface ImportView {
   resolutions: Resolutions;
   pending: string[];
   plan: LinkPlan;
+  /** catalogCourseId -> what students will see for each planned requirement change */
+  impact: Record<number, StudentImpact[]>;
+  /** "ref-missing:CODE" -> courses whose OFFICIAL API expression still lists CODE */
+  apiMentions: Record<string, string[]>;
   applyResult: unknown;
   canRescope: boolean;
 }
@@ -233,9 +239,18 @@ export async function getImportView(id: number, opts: { force?: boolean; slugs?:
   if (!rec) throw new RegistroError("Importación no encontrada.", 404);
   const hasBytes = (await prisma.registroImport.count({ where: { id, fileBytes: { not: null } } })) > 0;
 
-  const [entries, catalogs] = await Promise.all([loadEntries(id), loadCatalogInputs()]);
+  const [entries, catalogs, courseInputs] = await Promise.all([loadEntries(id), loadCatalogInputs(), loadCourseInputs()]);
   const items = analyzeRegistro(entries, catalogs);
   const resolutions = (rec.resolutions as Resolutions | null) ?? {};
+  const plan = planLinks(entries, catalogs, items, resolutions, opts);
+  const inputById = new Map([...courseInputs.values()].flatMap((c) => c.inputs).map((i) => [i.catalogCourseId, i] as const));
+  const impact: Record<number, StudentImpact[]> = {};
+  for (const cp of plan.courses) {
+    if (!cp.changes.length) continue;
+    const a = annotateCourse(cp, inputById.get(cp.catalogCourseId));
+    if (a.length) impact[cp.catalogCourseId] = a;
+  }
+  const mentions = apiMentions(items, [...inputById.values()]);
   return {
     id: rec.id,
     filename: rec.filename,
@@ -250,7 +265,9 @@ export async function getImportView(id: number, opts: { force?: boolean; slugs?:
     items,
     resolutions,
     pending: pendingDecisions(items, resolutions).map((i) => i.key),
-    plan: planLinks(entries, catalogs, items, resolutions, opts),
+    plan,
+    impact,
+    apiMentions: mentions,
     applyResult: rec.applyResult
       ? (() => {
           const { undo, ...rest } = rec.applyResult as unknown as ApplyResult & { undoneAt?: string };
