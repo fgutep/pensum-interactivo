@@ -291,3 +291,56 @@ model PasswordResetToken {
 
   @@index([userId])
 }
+
+/// One run of the Registro import wizard (docs/admin-registro-wizard.md).
+/// The uploaded Excel_Registro.xlsx is kept as `fileBytes` while the run is open
+/// so the admin can change the scope/term window (re-reduce = re-parse, ~7 s);
+/// it is nulled on apply/discard. The reduced dictionary lives in RegistroCourse
+/// and — for the latest `applied` run — doubles as the code dictionary that the
+/// Phase B editor uses for autocomplete/validation.
+model RegistroImport {
+  id          Int       @id @default(autoincrement())
+  filename    String
+  uploadedBy  String
+  status      String    @default("parsed") // parsed | applied | discarded
+  fileBytes   Bytes?    @db.LongBlob
+  /// ScopeOptions used for the current reduction
+  scope       Json
+  /// TermWindow of the current reduction
+  termWindow  Json?
+  parseStats  Json?
+  reduceStats Json?
+  /// { [itemKey]: Resolution } — the admin's decisions in step 3
+  resolutions Json?
+  /// result summary written on apply (per-catalog counts, snapshot ids)
+  applyResult Json?
+  createdAt   DateTime  @default(now())
+  appliedAt   DateTime?
+
+  courses RegistroCourse[]
+
+  @@index([status])
+}
+
+/// Reduced dictionary row: the newest in-window record of one course code.
+model RegistroCourse {
+  id             Int     @id @default(autoincrement())
+  importId       Int
+  normalizedCode String  @db.VarChar(32)
+  displayCode    String  @db.VarChar(64)
+  nameEs         String  @db.VarChar(500)
+  credits        Float?
+  departamento   String  @db.VarChar(200)
+  nivel          String  @db.VarChar(16)
+  period         String  @db.VarChar(6)
+  prereqText     String? @db.Text
+  coreqText      String? @db.Text
+  restrictions   Json?
+  /// matched the department/level scope (vs. pulled in by reference)
+  isCore         Boolean @default(false)
+
+  import RegistroImport @relation(fields: [importId], references: [id], onDelete: Cascade)
+
+  @@unique([importId, normalizedCode])
+  @@index([normalizedCode])
+}

@@ -50,6 +50,7 @@ user and receive the 12-word master secret for the super-panel. Full flow:
 [`docs/admin-auth.md`](docs/admin-auth.md).
 
 Other scripts (all in `web/`):
+- `npm run test` — unit tests (Node's built-in runner via `tsx --test "lib/**/*.test.ts"`); includes golden tests against `Excel_Registro.xlsx` (skipped if the file is absent). Registro wizard: [`docs/admin-registro-wizard.md`](docs/admin-registro-wizard.md).
 - `npm run scrape:desc` — course descriptions from smartcatalogiq → `Course.description` (standalone; the seed never touches it). Docs: `scripts/scrapeDescriptions.md`.
 - `npm run export:templates` — regenerate `plantillas/PLANES.xlsx` + `ELECTIVAS.xlsx` (coordinator import templates) from the DB. Docs: `scripts/exportTemplates.md`.
 

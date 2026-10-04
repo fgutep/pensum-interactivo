@@ -613,6 +613,17 @@ the Docker monolith deploy (app + MySQL in one stack). Full doc:
   setup/login/unlock/create/reset/change/delete/rotate. Local auth tables reset
   to uninitialized afterward.
 
+**Session 2026-10-04 — admin experience, Phase A: Registro import wizard (done, verified; not committed). Branch `admin-auth-and-experience`.**
+Phase B (separate drag-and-drop authoring canvas; the student `MapCanvas`/`PensumExplorer` are deliberately untouched) is next. Full doc: [`docs/admin-registro-wizard.md`](../docs/admin-registro-wizard.md).
+- **What it does:** `/administrador/registro` — upload `Excel_Registro.xlsx` → scope (last 3 *regular* terms, detected from department rows so the future `202701` doesn't count) → resolve unmatched codes → link/diff per catalog → apply → undo. Reduces ≈117k rows to ≈83 dictionary entries (65 department + 18 referenced).
+- **Key finding:** IELC has no code prefix and the program-restriction column is empty, so IELE/IELC can only be scoped by department (`INGEN. ELECTRICA Y ELECTRONICA` + legacy `INGENIERIA ELECTRONICA`) plus a one-level closure of referenced codes.
+- **16 blocking decisions on the real file** (5 bound-but-absent codes + 11 department-referenced stale codes); other departments' stale alternatives are informational.
+- **Write safety:** single transaction; `pre-registro` snapshot per changed catalog; never sets `manuallyEdited`; replace/drop/rebind choices pin `lockedFields`; `manuallyEdited`/locked rows are skipped unless "forzar"; **undo** restores exact row state (the snapshot can't — it stores the student view, where live API prereqs beat document text), all-or-nothing, including SQL `NULL` vs JSON `null`.
+- **Data:** migration `20261004011952_add_registro_import` (`RegistroImport`, `RegistroCourse`; additive). `lib/registro/*`, `app/api/admin/registro/*`, `components/admin/registro/*`. New `npm run test`.
+- **Verified:** 75 unit tests (incl. 9 on the real file; mutation check), 36 service-integration checks, 35 browser E2E checks (Edge/puppeteer-core), scratch DB vs real DB = 0 differing `CatalogCourse` rows after apply+undo. Real local DB never written. Bugs found along the way are listed in the doc.
+- **For Phase B:** the student payload prefers live API prereqs over the stored document text, which is what this wizard writes — Phase B needs an explicit precedence rule for admin-authored edges. Applying registro to the seeded catalogs is currently a no-op (same source as the seed). One local row is `manuallyEdited` (ielc-cbu3 `IELE3200`, the 2026-09-24 patch) and is skipped by the wizard.
+- **Windows gotchas:** editing UTF-8 with PowerShell `Get-Content/Set-Content` double-encodes accents; piping `mysqldump` through PowerShell corrupts them too (copy DBs inside the container).
+
 ## Next
 
 
