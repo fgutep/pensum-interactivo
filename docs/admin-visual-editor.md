@@ -103,6 +103,10 @@ the *set* of `sortIndex` values and only reorders, so unrelated rows do not chan
   undo through the UI → table identical, unknown-code confirm, API/Doc statements, `⚠` count = catalog-list badge, Alt+arrows, unparsed banner)
   and `plans.mjs` (all 5 plans render, deep expressions shown as compound, every control has an accessible name, keyboard selection, empty state, no console errors).
 - `npm run build` passes. The real database was never written during testing.
+- **Also verified on Postgres (the Vercel/Neon line, 2026-10-04):** a throwaway `postgres:16-alpine` was loaded with `main`'s existing migration + seed,
+  the new additive migration was applied on top (existing tables byte-identical by row count + content hash, `migrate status` up to date, `migrate diff` reports
+  no drift), then the same 11 integration checks (incl. the concurrency test and SQL-NULL vs JSON-null), 50 + 15 browser checks and `next build` all pass; the
+  Registro import (83-entry dictionary, `bytea` upload) runs there too. The integration test and `e2e.mjs` are dialect-aware (`E2E_PG=1`).
 
 ## Bugs found by the verification (fixed)
 

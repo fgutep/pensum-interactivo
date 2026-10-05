@@ -1,5 +1,6 @@
 // B1 service integration — runs ONLY against a scratch database (DATABASE_URL must name a
-// database containing "test"; copy it inside the container, never write the real one):
+// database containing "test"; copy it inside the container, never write the real one).
+// Works on MySQL and on Postgres (the Vercel/Neon line): the raw SQL below is dialect-aware.
 //   DATABASE_URL=mysql://root:pensum@127.0.0.1:3306/pensum_maptest \
 //     node --import tsx --test lib/mapEditor/__tests__/service.integration.test.ts
 import test, { before } from "node:test";
@@ -7,6 +8,10 @@ import assert from "node:assert/strict";
 import type { ReqNode } from "../../types";
 
 const url = process.env.DATABASE_URL ?? "";
+const isPg = /^postgres/i.test(url);
+/** identifier quoting: Postgres folds unquoted camelCase to lowercase */
+const q = (n: string) => (isPg ? `"${n}"` : n);
+const txt = isPg ? "TEXT" : "CHAR";
 const skip = !/\/[^/?]*test[^/?]*(\?|$)/i.test(url) && "DATABASE_URL is not a scratch (…test…) database";
 
 type Svc = typeof import("../service");
@@ -24,9 +29,9 @@ before(async () => {
 /** Whole CatalogCourse table as raw SQL sees it (SQL NULL vs JSON null preserved). */
 async function rawTable(): Promise<string> {
   const rows = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(
-    `SELECT *, (prereqTree IS NULL) AS _n1, (coreqTree IS NULL) AS _n2, (lockedFields IS NULL) AS _n3,
-       CAST(prereqTree AS CHAR) AS _p, CAST(coreqTree AS CHAR) AS _c, CAST(lockedFields AS CHAR) AS _l
-     FROM CatalogCourse ORDER BY id`
+    `SELECT *, (${q("prereqTree")} IS NULL) AS _n1, (${q("coreqTree")} IS NULL) AS _n2, (${q("lockedFields")} IS NULL) AS _n3,
+       CAST(${q("prereqTree")} AS ${txt}) AS _p, CAST(${q("coreqTree")} AS ${txt}) AS _c, CAST(${q("lockedFields")} AS ${txt}) AS _l
+     FROM ${q("CatalogCourse")} ORDER BY id`
   );
   return JSON.stringify(rows, (_k, v) => (typeof v === "bigint" ? v.toString() : v));
 }
@@ -159,8 +164,8 @@ test("unknown code needs confirmation (dictionary), then goes through and undoes
 test("SQL NULL vs JSON null survives apply+undo", { skip }, async () => {
   const pristine = await rawTable();
   const nulls = await prisma.$queryRawUnsafe<{ id: number }[]>(
-    `SELECT cc.id FROM CatalogCourse cc JOIN Catalog c ON c.id = cc.catalogId
-     WHERE c.slug = '${SLUG}' AND cc.courseId IS NOT NULL AND cc.coreqTree IS NULL LIMIT 1`
+    `SELECT cc.id FROM ${q("CatalogCourse")} cc JOIN ${q("Catalog")} c ON c.id = cc.${q("catalogId")}
+     WHERE c.slug = '${SLUG}' AND cc.${q("courseId")} IS NOT NULL AND cc.${q("coreqTree")} IS NULL LIMIT 1`
   );
   assert.ok(nulls.length, "need a row with SQL NULL coreqTree");
   const v = await view();

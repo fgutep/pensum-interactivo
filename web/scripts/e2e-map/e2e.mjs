@@ -1,6 +1,7 @@
 // Browser E2E for the admin map. Needs: puppeteer-core installed OUTSIDE the repo (npm i puppeteer-core), Edge,
-// a SCRATCH db (docker exec ... mysqldump | mysql into pensum_maptest) served by 'DATABASE_URL=...pensum_maptest next dev -p 3100',
-// and an admin 'e2e' / 'e2e-password-1' created through /administrador/setup on that scratch server. See docs/admin-visual-editor.md.
+// a SCRATCH db served by 'DATABASE_URL=...pensum_maptest next dev -p 3100' (MySQL: copy the dev DB inside the container; Postgres: set E2E_PG=1 and
+// use a throwaway container named pg-maptest), and an admin 'e2e' / 'e2e-password-1' created through /administrador/setup on that scratch server.
+// See docs/admin-visual-editor.md.
 // Browser E2E for the admin map (B2-B6) against the SCRATCH db on :3100. Edge via puppeteer-core.
 import puppeteer from "puppeteer-core";
 import { spawnSync } from "node:child_process";
@@ -9,7 +10,16 @@ const BASE = "http://localhost:3100";
 const SLUG = "iele-cbu3";
 let pass = 0, fail = 0;
 const ok = (c, m) => { if (c) { pass++; console.log("  ok  ", m); } else { fail++; console.log("  FAIL", m); } };
-const sql = (q) => spawnSync("docker", ["exec", "pensum-interactivo-db-1", "mysql", "-uroot", "-ppensum", "-N", "-e", q], { encoding: "utf8" }).stdout.trim();
+const PG = process.env.E2E_PG === "1"; // run against the Postgres scratch container instead of MySQL
+// the queries below are written MySQL-style; translate them for Postgres (quoted identifiers, string_agg, ...)
+const toPg = (q) => q.replace(/pensum_maptest\./g, "")
+  .replace(/\b(CatalogCourse|CatalogSnapshot|AuditLog)\b/g, '"$1"')
+  .replace(/\b(suggestedSemester|sortIndex|prereqText|coreqText|prereqTree|coreqTree|lockedFields|manuallyEdited)\b/g, '"$1"')
+  .replace(/IFNULL/g, "coalesce").replace(/AS CHAR/g, "AS TEXT").replace(/MD5\(/g, "md5(")
+  .replace("GROUP_CONCAT(", "string_agg(").replace(" ORDER BY id)", ", '|' ORDER BY id)");
+const sql = (q) => PG
+  ? spawnSync("docker", ["exec", "pg-maptest", "psql", "-U", "pensum", "-d", "pensum_maptest", "-t", "-A", "-c", toPg(q)], { encoding: "utf8" }).stdout.trim()
+  : spawnSync("docker", ["exec", "pensum-interactivo-db-1", "mysql", "-uroot", "-ppensum", "-N", "-e", q], { encoding: "utf8" }).stdout.trim();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const browser = await puppeteer.launch({
@@ -208,7 +218,7 @@ try {
   await sleep(1200);
   ok(sql(`SELECT suggestedSemester FROM pensum_maptest.CatalogCourse WHERE id=${mover.id}`) === "3", "DB has the new semester");
   ok(JSON.parse(sql(`SELECT lockedFields FROM pensum_maptest.CatalogCourse WHERE id=${mover.id}`)).includes("suggestedSemester"), "moved field pinned");
-  ok(sql(`SELECT manuallyEdited FROM pensum_maptest.CatalogCourse WHERE id=${mover.id}`) === "0", "manuallyEdited NOT set");
+  ok(sql(`SELECT manuallyEdited FROM pensum_maptest.CatalogCourse WHERE id=${mover.id}`).match(/^(0|f)$/) !== null, "manuallyEdited NOT set");
   ok(Number(sql(`SELECT COUNT(*) FROM pensum_maptest.CatalogSnapshot WHERE reason='pre-map'`)) === snapsBefore + 1, "pre-map snapshot written");
   ok(sql(`SELECT actor FROM pensum_maptest.AuditLog WHERE action='map.apply' ORDER BY id DESC LIMIT 1`) === "e2e", "audit attributed to the logged-in user");
   // student invariance
