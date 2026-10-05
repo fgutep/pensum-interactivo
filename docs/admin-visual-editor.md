@@ -64,7 +64,7 @@ the **row versions** (hash of every editable column) and an `orderVersion` (need
 
 1. Version check → `409` with a readable "el plan cambió" if any touched row (or the layout) changed; nothing written.
 2. The same pure planner the browser uses computes the end state; the end state is validated.
-3. A `pre-map` `CatalogSnapshot` (student view, for audit), then **one transaction**: plan rows locked `FOR UPDATE`,
+3. A `pre-map` `CatalogSnapshot` (student view, for audit), then **one transaction** (READ COMMITTED): the plan is locked by writing its `Catalog` row,
    versions re-checked, two-phase `sortIndex` write (park on unique negatives, then final), text **and** tree written together
    from the model, `lockedFields` pinned.
 4. A `MapEdit` row stores the exact per-row before/after (incl. SQL `NULL` vs JSON `null`); `AuditLog` `map.apply` names the logged-in user.
@@ -105,6 +105,14 @@ the *set* of `sortIndex` values and only reorders, so unrelated rows do not chan
 - `npm run build` passes. The real database was never written during testing.
 
 ## Bugs found by the verification (fixed)
+
+- **Concurrency (found while preparing the Postgres preview):** two simultaneous batches built from the same version both succeeded. Under MySQL's default
+  REPEATABLE READ, Prisma's `update` reads before it writes, which fixed the transaction snapshot *before* the lock wait, so the post-lock version re-check
+  could not see the winner's commit. Transactions now run at READ COMMITTED (Postgres' default) and undo got the same lock + in-transaction re-check.
+  Covered by `service.integration.test.ts` ("two concurrent batches…": exactly one wins, the loser gets 409).
+- **Portability:** the first version used MySQL-only raw SQL (unquoted camelCase identifiers, `FOR UPDATE`) — it would have failed on the Postgres/Neon
+  preview. SQL-NULL detection now uses Prisma's `DbNull` filter and the lock is a Prisma write; there is no raw SQL left in app code (see
+  [`branches-and-releases.md`](branches-and-releases.md)).
 
 - Click-connect used a stale requirement kind (callback closure) → created a prerequisite instead of a coreq. Now goes through a ref.
 - In connect mode React Flow set `pointer-events:none` on non-draggable cards (the same quirk as the student canvas, 2026-09-24) → a no-op `onNodeClick`.

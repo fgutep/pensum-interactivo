@@ -240,3 +240,21 @@ test("real data, all plans: every row's own requirement round-trips as a no-op; 
   console.log(`real data: ${slugs.length} plans, ${rows} rows, ${withReq} requirements, ${complex} deep (complex)`);
   assert.ok(withReq > 100);
 });
+
+test("two concurrent batches on the same version: exactly one wins, the other gets a conflict", { skip }, async () => {
+  const pristine = await rawTable();
+  const v = await view();
+  const r = v.rows.find((x) => x.code)!;
+  const mk = (sem: number) => ({
+    catalogSlug: SLUG, versions: versionsFor(v, [r.id]), orderVersion: v.orderVersion,
+    ops: [{ op: "move" as const, courseId: r.id, semester: sem, position: 0 }],
+  });
+  const results = await Promise.allSettled([svc.applyMapBatch(mk(6), "a"), svc.applyMapBatch(mk(7), "b")]);
+  const ok = results.filter((x) => x.status === "fulfilled") as PromiseFulfilledResult<{ editId: number }>[];
+  const bad = results.filter((x) => x.status === "rejected") as PromiseRejectedResult[];
+  assert.equal(ok.length, 1, "exactly one batch applies");
+  assert.equal((bad[0].reason as { status?: number }).status, 409, "the loser gets a 409 conflict");
+  assert.equal(new Set((await view()).rows.map((x) => x.sortIndex)).size, v.rows.length, "no sortIndex collision");
+  await svc.undoMapEdit(ok[0].value.editId, { actor: "tester" });
+  assert.equal(await rawTable(), pristine);
+});

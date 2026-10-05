@@ -306,15 +306,20 @@ export interface RowState {
 type NullableJsonCol = "prereqTree" | "coreqTree" | "lockedFields";
 const JSON_COLS: NullableJsonCol[] = ["prereqTree", "coreqTree", "lockedFields"];
 
-/** Prisma reads SQL NULL and JSON null both as null; ask MySQL which it is. */
+/**
+ * Prisma reads SQL NULL and JSON null both as null; ask the database which one it is, with Prisma's
+ * DbNull filter (portable across MySQL and Postgres — no raw SQL).
+ */
 async function sqlNullColumns(ids: number[]): Promise<Map<number, NullableJsonCol[]>> {
-  const out = new Map<number, NullableJsonCol[]>();
+  const out = new Map<number, NullableJsonCol[]>(ids.map((id) => [id, []]));
   if (!ids.length) return out;
-  const rows = await prisma.$queryRaw<
-    { id: number; prereqTree: bigint | number; coreqTree: bigint | number; lockedFields: bigint | number }[]
-  >(Prisma.sql`SELECT id, (prereqTree IS NULL) AS prereqTree, (coreqTree IS NULL) AS coreqTree,
-      (lockedFields IS NULL) AS lockedFields FROM CatalogCourse WHERE id IN (${Prisma.join(ids)})`);
-  for (const r of rows) out.set(Number(r.id), JSON_COLS.filter((c) => Number(r[c]) === 1));
+  for (const col of JSON_COLS) {
+    const rows = await prisma.catalogCourse.findMany({
+      where: { id: { in: ids }, [col]: { equals: Prisma.DbNull } },
+      select: { id: true },
+    });
+    for (const r of rows) out.get(r.id)!.push(col);
+  }
   return out;
 }
 const ROW_SELECT = {

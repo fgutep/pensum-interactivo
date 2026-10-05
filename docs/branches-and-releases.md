@@ -32,6 +32,19 @@ Only the database layer (everything else must be byte-identical):
 The 2026-10 design pass touches **none** of the database layer (no schema or
 migration changes), which is why it carries to `main` unchanged.
 
+## One code line, two databases: keep app code portable
+
+Everything outside the table above must run unchanged on MySQL **and** Postgres, so:
+
+- **No raw SQL in app code** (`$queryRaw*` with table/column names). MySQL accepts unquoted `CatalogCourse`/`prereqTree`; Postgres folds them to lowercase
+  and fails. Use Prisma's API instead (e.g. `where: { col: { equals: Prisma.DbNull } }` to tell SQL NULL from JSON null; a Prisma write on the parent row as a
+  portable row lock). `SELECT 1` in the health route is the only exception. `scripts/inspect.ts` is a dev script and legitimately differs per branch.
+- **Transactions that re-check after a lock must run at `READ COMMITTED`** (`isolationLevel`): MySQL's default REPEATABLE READ fixes the snapshot early.
+- Case sensitivity differs (MySQL collations are case-insensitive, Postgres is not): normalise codes/usernames before comparing, as the app does.
+- A new Prisma model needs a migration on **both** lines: the MySQL one on `mysql-migration`, and a Postgres one on `main` (generate it with
+  `prisma migrate diff --from-schema-datamodel <old> --to-schema-datamodel <new> --script` in the separate `main` worktree, read it, and apply it on a
+  throwaway Postgres before it can reach Neon — `vercel-build` runs `prisma migrate deploy`).
+
 ## Syncing the two branches
 
 Direction is always **`mysql-migration` → `main`**.

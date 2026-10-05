@@ -49,18 +49,23 @@ interface UndoPayload {
   snapshotId: number | null;
 }
 
-/** Prisma reads SQL NULL and JSON null alike; ask MySQL which it is. */
+/**
+ * Prisma reads SQL NULL and JSON null alike. Ask the database which one a column holds, with
+ * Prisma's own DbNull filter (no raw SQL, so it behaves the same on MySQL and Postgres).
+ */
 async function sqlNullColumns(
   db: Prisma.TransactionClient | typeof prisma,
   ids: number[]
 ): Promise<Map<number, JsonCol[]>> {
-  const out = new Map<number, JsonCol[]>();
+  const out = new Map<number, JsonCol[]>(ids.map((id) => [id, []]));
   if (!ids.length) return out;
-  const rows = await db.$queryRaw<
-    { id: number; prereqTree: bigint | number; coreqTree: bigint | number; lockedFields: bigint | number }[]
-  >(Prisma.sql`SELECT id, (prereqTree IS NULL) AS prereqTree, (coreqTree IS NULL) AS coreqTree,
-      (lockedFields IS NULL) AS lockedFields FROM CatalogCourse WHERE id IN (${Prisma.join(ids)})`);
-  for (const r of rows) out.set(Number(r.id), JSON_COLS.filter((c) => Number(r[c]) === 1));
+  for (const col of JSON_COLS) {
+    const rows = await db.catalogCourse.findMany({
+      where: { id: { in: ids }, [col]: { equals: Prisma.DbNull } },
+      select: { id: true },
+    });
+    for (const r of rows) out.get(r.id)!.push(col);
+  }
   return out;
 }
 
@@ -196,7 +201,9 @@ export async function applyMapBatch(batch: MapBatch, actor: string): Promise<App
   await prisma.$transaction(
     async (tx) => {
       // lock the plan, then re-check versions against what we just locked
-      await tx.$queryRaw(Prisma.sql`SELECT id FROM CatalogCourse WHERE catalogId = ${cat.id} FOR UPDATE`);
+      // serialise concurrent batches on this plan: writing the catalog row takes a row lock (portable;
+      // no raw SQL) held until commit, and everything below is read after it is acquired
+      await tx.catalog.update({ where: { id: cat.id }, data: { updatedAt: new Date() } });
       const locked = await tx.catalogCourse.findMany({ where: { catalogId: cat.id }, select: dbSelect });
       checkVersions(locked.map(toPlanRow), batch, touched, hasMove);
       const sqlNulls = await sqlNullColumns(tx, ids);
@@ -233,7 +240,9 @@ export async function applyMapBatch(batch: MapBatch, actor: string): Promise<App
         undoRows.push({ id, before: stateOf(cur), after, sqlNull: sqlNulls.get(id) ?? [] });
       }
     },
-    { timeout: 60_000 }
+    // READ COMMITTED (Postgres' default; MySQL defaults to REPEATABLE READ, whose snapshot is fixed before the
+    // lock wait and would hide the winner's commit from the re-check below)
+    { timeout: 60_000, isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted }
   );
 
   const payloadUndo: UndoPayload = { rows: undoRows, snapshotId: snap?.id ?? null };
@@ -284,28 +293,41 @@ export async function undoMapEdit(
   if (edit.status !== "applied") throw new BatchError("Esta edición ya fue deshecha.", 409);
   const undo = edit.undo as unknown as UndoPayload;
 
-  const current = new Map(
-    (await prisma.catalogCourse.findMany({
-      where: { id: { in: undo.rows.map((u) => u.id) } }, select: { id: true, ...STATE_SELECT },
-    })).map((r) => [r.id, r])
-  );
-  const conflicts = undo.rows
-    .filter((u) => {
-      const c = current.get(u.id);
-      if (!c) return true;
-      const { id: _i, ...state } = c;
-      void _i;
-      return canon(state) !== canon(u.after);
-    })
-    .map((u) => u.id);
-  if (conflicts.length && !opts.force)
-    throw new BatchError(
+  const conflictsOf = (cur: Map<number, { id: number } & RowState>) =>
+    undo.rows
+      .filter((u) => {
+        const c = cur.get(u.id);
+        if (!c) return true;
+        const { id: _i, ...state } = c;
+        void _i;
+        return canon(state) !== canon(u.after);
+      })
+      .map((u) => u.id);
+  const load = async (db: Prisma.TransactionClient | typeof prisma) =>
+    new Map(
+      (await db.catalogCourse.findMany({
+        where: { id: { in: undo.rows.map((u) => u.id) } }, select: { id: true, ...STATE_SELECT },
+      })).map((r) => [r.id, r])
+    );
+  const refuse = (conflicts: number[]) =>
+    new BatchError(
       `${conflicts.length} curso(s) se editaron después; no se deshizo nada. Revisa o fuerza.`, 409, { conflicts }
     );
 
-  const toRestore = undo.rows.filter((u) => current.has(u.id));
+  // fast refusal before taking any lock
+  const early = conflictsOf(await load(prisma));
+  if (early.length && !opts.force) throw refuse(early);
+
+  let toRestore: UndoRow[] = [];
+  let conflicts: number[] = [];
   await prisma.$transaction(
     async (tx) => {
+      // same serialisation as apply: lock the plan, then decide on what is committed *now*
+      await tx.catalog.update({ where: { id: edit.catalogId }, data: { updatedAt: new Date() } });
+      const current = await load(tx);
+      conflicts = conflictsOf(current);
+      if (conflicts.length && !opts.force) throw refuse(conflicts);
+      toRestore = undo.rows.filter((u) => current.has(u.id));
       for (const u of toRestore)
         await tx.catalogCourse.update({ where: { id: u.id }, data: { sortIndex: -u.id - 1 } });
       for (const u of toRestore) {
@@ -326,7 +348,7 @@ export async function undoMapEdit(
       }
       await tx.mapEdit.update({ where: { id: editId }, data: { status: "undone", undoneAt: new Date() } });
     },
-    { timeout: 60_000 }
+    { timeout: 60_000, isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted }
   );
   await writeAudit({
     actor: opts.actor, action: "map.undo", entityType: "MapEdit", entityId: editId,
