@@ -16,7 +16,7 @@ what's next (P2 admin, P3 Docker), and the gotchas.
 - **Docs:** [`docs/`](docs/README.md) — branches & releases (MySQL monolith is the official
   release; `main`/Vercel is a temporary preview), **admin auth** (DB-backed multi-user
   accounts + one-time setup + 12-word master-secret super-panel — see
-  [`docs/admin-auth.md`](docs/admin-auth.md)), the October 2026 design pass, user flows.
+  [`docs/admin-auth.md`](docs/admin-auth.md)), the October 2026 design pass, user flows, and the **admin visual pensum editor** (`/administrador/catalogos/[slug]/mapa`, [`docs/admin-visual-editor.md`](docs/admin-visual-editor.md)).
 
 ## Layout
 

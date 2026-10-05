@@ -36,6 +36,7 @@ model Catalog {
   courses          CatalogCourse[]
   requirementNodes RequirementNode[]
   snapshots        CatalogSnapshot[]
+  mapEdits         MapEdit[]
   importJobs       ImportJob[]
 
   @@index([status])
@@ -343,4 +344,24 @@ model RegistroCourse {
 
   @@unique([importId, normalizedCode])
   @@index([normalizedCode])
+}
+
+/// Phase B (visual editor): one applied canvas batch. `undo` holds the exact
+/// per-row before/after (incl. SQL NULL vs JSON null) so the batch can be reverted.
+model MapEdit {
+  id         Int       @id @default(autoincrement())
+  catalogId  Int
+  actor      String    @db.VarChar(100)
+  /// the MapOp[] as submitted
+  ops        Json
+  /// { rows: UndoRow[], pinned: ..., snapshotId }
+  undo       Json
+  snapshotId Int?
+  status     String    @default("applied") // applied | undone
+  createdAt  DateTime  @default(now())
+  undoneAt   DateTime?
+
+  catalog Catalog @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+
+  @@index([catalogId])
 }

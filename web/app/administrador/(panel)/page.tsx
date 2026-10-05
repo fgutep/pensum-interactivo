@@ -118,6 +118,12 @@ export default async function CatalogListPage() {
                     href={`/administrador/catalogos/${c.slug}`}
                   >
                     Editar
+                  </Link>{" "}
+                  <Link
+                    className="admin-btn"
+                    href={`/administrador/catalogos/${c.slug}/mapa`}
+                  >
+                    Mapa
                   </Link>
                 </td>
               </tr>

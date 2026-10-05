@@ -634,6 +634,13 @@ Phase B (separate drag-and-drop authoring canvas; the student `MapCanvas`/`Pensu
 - **Lessons:** run mutation checks *sequentially* (edit → run → restore → run) — a batched edit+test can race; real data doesn't exercise rare branches, plant scenarios.
 - **Phase B precedence (decided):** unchanged — prefer the API, only fall back to the document. Admin-authored edges are document data and reach students only where the API has no data; the Phase B canvas shows the API requirement as a read-only layer and raises the same discrepancy alerts.
 
+**Session 2026-10-04 (cont.) — Phase B: visual pensum editor B0–B6 (done, verified; not committed). Same branch.** Full doc: [`docs/admin-visual-editor.md`](../docs/admin-visual-editor.md); plan + decision log: [`docs/admin-visual-editor-plan.md`](../docs/admin-visual-editor-plan.md).
+- **Decisions:** pin only changed fields (never `manuallyEdited`); corequisites drawn and list-edited; **no cross-plan actions**; no age-based dictionary warning (current while the Registro run covers the plan's term).
+- **Built:** `/administrador/catalogos/[slug]/mapa` — separate canvas (student explorer + `catalogPayload.ts` untouched), drag to move, handle/click connect, edge circles + OR grouping, list + text editor, API layer, live discrepancy alerts, history/undo. Pure model/planner in `web/lib/mapEditor/` (shared by browser preview and server), atomic `applyMapBatch` with row versions, `FOR UPDATE`, two-phase `sortIndex`, `pre-map` snapshot, audit, exact `undoMapEdit`. Migration `20261004163217_add_map_edit` (`MapEdit`, additive) — applied to the local dev DB.
+- **Verified:** 35 mapEditor unit tests (corpus: 4 130 expressions round-trip; 20 deep ones across the 5 plans), 10 service-integration checks on a scratch DB (apply→undo byte-identical), 50 + 15 browser E2E checks (`web/scripts/e2e-map/`), `npm run build` passes. Real DB never written.
+- **Findings:** 2 stored texts the parser cannot read (`MUS070.0`, `MUS060.0` in the Registro) → the canvas shows an error banner; the student payload has `generatedAt` (ignore it when comparing); React Flow `pointer-events:none` on non-draggable nodes again (needs a no-op `onNodeClick`).
+- **Not done / next:** nothing blocking. Possible follow-ups: surface unparseable stored text in the Discrepancias page too; Registro-wizard rows pinned by the map are skipped like other pinned rows.
+
 ## Next
 
 

@@ -102,7 +102,8 @@ export default async function CatalogEditorPage({
   return (
     <>
       <p className="admin-sub">
-        <Link href="/administrador">← Catálogos</Link>
+        <Link href="/administrador">← Catálogos</Link> ·{" "}
+        <Link href={`/administrador/catalogos/${slug}/mapa`}>Abrir mapa visual →</Link>
       </p>
       <h1>
         {catalog.programName}
